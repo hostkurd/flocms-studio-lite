@@ -5,6 +5,7 @@ import { h, plain } from '../ui/dom.ts';
 import { errorText } from '../ui/errors.ts';
 import { icon } from '../ui/icons.ts';
 import { openExisting } from './sidebar.ts';
+import { openWizard } from './wizard.ts';
 
 export function welcomeView(): HTMLElement {
   return h(
@@ -20,6 +21,7 @@ export function welcomeView(): HTMLElement {
         'div',
         { class: 'actions' },
         h('button', { type: 'button', class: 'btn btn-primary', onclick: addFolder }, icon('folder'), t('welcome.addFolder')),
+        h('button', { type: 'button', class: 'btn', onclick: openWizard }, icon('plus'), t('sidebar.newProject')),
         h('button', { type: 'button', class: 'btn', onclick: openExisting }, t('sidebar.openFolder')),
       ),
     ),

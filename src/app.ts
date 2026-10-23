@@ -9,6 +9,7 @@ import { projectView } from './views/project.ts';
 import { settingsView, type SettingsView } from './views/settings.ts';
 import { sidebar } from './views/sidebar.ts';
 import { welcomeView } from './views/welcome.ts';
+import { wizardView } from './views/wizard.ts';
 
 let root: HTMLElement;
 let mainKey = '';
@@ -71,6 +72,8 @@ function render(): void {
     if (view.name === 'settings') {
       settingsPage = settingsView();
       mainEl = settingsPage.el;
+    } else if (view.name === 'wizard') {
+      mainEl = wizardView();
     } else if (view.name === 'project') {
       mainEl = projectView(view.path, view.tab);
     } else {
@@ -84,5 +87,7 @@ function render(): void {
     { class: 'toasts', role: 'status', 'aria-live': 'polite' },
     state.toasts.map((toast) => h('div', { class: 'toast' + (toast.bad ? ' is-bad' : '') }, toast.text)),
   );
-  root.replaceChildren(h('div', { class: 'app' }, sidebar(), mainEl), toasts);
+  // The wizard has the whole window (board 2)
+  const layout = state.view.name === 'wizard' ? h('div', { class: 'app' }, mainEl) : h('div', { class: 'app' }, sidebar(), mainEl);
+  root.replaceChildren(layout, toasts);
 }

@@ -282,7 +282,7 @@ impl Servers {
             let reader = BufReader::new(reader);
             for line in reader.split(b'\n') {
                 let Ok(bytes) = line else { break };
-                let text = String::from_utf8_lossy(&bytes).trim_end_matches('\r').to_string();
+                let text = tools::clean_line(String::from_utf8_lossy(&bytes).trim_end_matches('\r'));
                 if source == "log" && text.starts_with("==> ") {
                     continue; // log:tail's "==> storage/logs/app.log <==" header
                 }

@@ -2,6 +2,15 @@
 
 ## Unreleased (0.1.0)
 
+### Stage 4: new project wizard
+- New project (board 2): name, folder, languages (any code, one default), what you are building (the five `php flo setup` choices), "Also add the JSON API" for the two website choices; database (SQLite with no setup, or an existing MySQL/MariaDB database); the first admin account when the setup has the admin panel; then Create.
+- Create runs, and shows: `composer create-project hostkurd/flocms <name>`, writing `.env`, `php flo setup --as=<choice>`, the API when asked (`composer require hostkurd/flocms-api:^1.3`, `php flo api:install`), `php flo db:check`, `php flo migrate`, `php flo user:create --role=super-admin --password-stdin` (the password goes in on stdin, never on the command line).
+- Writing `.env` is Studio's own step (FloCMS has no command for it; agreed): it sets `APP_NAME`, `SITE_NAME`, `APP_URL`, `LANGUAGES`, `DEFAULT_LANG` and the `DB_*` keys, written the way core reads them, and keeps every other line.
+- A failed step can be run again after fixing the cause; the project is listed as soon as it exists.
+- `php flo setup` gets the Composer chosen in Settings through `COMPOSER_BINARY` (a phar, a .bat or a PHP file).
+- Command output without colour codes and control characters (Composer's progress bars).
+- A test checks that every command the screens run is on the Rust side's allowed list.
+
 ### Stage 3: Overview, Doctor and Database
 - Doctor tab (D4, board 7): `php flo doctor --format=json` with the check names in the reader's language and the details as the command wrote them; `php flo admin:doctor` line by line (✓ ! ✗), problems and warnings first, every line and the full output one click away.
 - Database tab (board 5): connection, migrations from `php flo migrate:status` (waiting, ran, changed since, file missing; the package of package migrations), Run migrations, Undo last batch, Fill with seed data, Delete all tables (asks for the database name); tables and row counts from `php flo db:show --format=json`, with Open in admin for resources (`php flo admin:list`).

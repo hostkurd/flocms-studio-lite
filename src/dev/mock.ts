@@ -178,6 +178,12 @@ async function handle(command: string, args: Record<string, unknown> = {}): Prom
       return startTask(args as { id: string; program: string; args: string[] });
     case 'task_cancel':
       return null;
+    case 'folder_status':
+      return { exists: false, empty: false, parentExists: true };
+    case 'env_set':
+      return null;
+    case 'home_folder':
+      return 'C:\\Users\\dev';
     case 'open_in_editor':
     case 'open_folder':
     case 'open_url':
@@ -304,6 +310,22 @@ function startTask(task: { id: string; program: string; args: string[] }): strin
     say('  Migrating 2026_10_22_140500_add_featured_to_properties ... done', 'out', 300);
     say('  Migrating 2026_10_22_141000_create_admin_mailings_table ... done', 'out', 700);
     say('[OK] 2 migration(s) ran (batch 4).', 'out', 900);
+  } else if (task.args[0] === 'create-project') {
+    say('Creating a "hostkurd/flocms" project at "./' + (task.args[2] ?? 'site') + '"', 'err', 100);
+    say('Installing hostkurd/flocms (v2.0.0)', 'err', 200);
+    say('Package operations: 6 installs, 0 updates, 0 removals', 'err', 400);
+    say('[OK] APP_KEY set in .env.', 'out', 800);
+    say('! No terminal to ask in: the project stays as it is (website only). To choose, run: php flo setup', 'out', 900);
+  } else if (task.args[0] === 'setup') {
+    say('Website + admin panel:', 'out', 100);
+    say('    composer require hostkurd/flocms-admin:^0.39.3', 'out', 150);
+    say('    php flo admin:install', 'out', 200);
+    say('[OK] Created config/admin.php', 'out', 600);
+    say('[OK] Done. Next: set DB_* in .env, then `php flo migrate` and `php flo user:create`.', 'out', 900);
+  } else if (task.args[0] === 'user:create') {
+    say('[OK] User #1 created: ' + (task.args.find((a) => a.startsWith('--email='))?.slice(8) ?? '') + ' (Super Admin, active).', 'out', 300);
+  } else if (task.args[0] === 'db:check') {
+    say('[OK] Connected (sqlite).', 'out', 200);
   } else if (task.args[0] === 'optimize') {
     say('18/18 [============================] 100%', 'err', 200);
     say('[OK] 18 template(s) compiled into views/cache.', 'out', 400);

@@ -10,7 +10,7 @@ language is.
 
 > Status: v0.1 in progress. Built so far: the window, the project list,
 > project Overview, Database, Doctor and Packages, Settings, running the
-> site and its logs.
+> site and its logs, the new project wizard.
 
 ## What you need
 

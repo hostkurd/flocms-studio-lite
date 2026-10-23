@@ -180,6 +180,9 @@ export const api = {
   taskCancel: (id: string) => call<void>('task_cancel', { id }),
   onTaskOutput: (handler: (line: TaskLine) => void) => events('task-output', (p) => handler(p as TaskLine)),
   onTaskExit: (handler: (exit: TaskExit) => void) => events('task-exit', (p) => handler(p as TaskExit)),
+  folderStatus: (path: string) => call<{ exists: boolean; empty: boolean; parentExists: boolean }>('folder_status', { path }),
+  envSet: (path: string, values: [string, string][]) => call<void>('env_set', { path, values }),
+  homeFolder: () => call<string | null>('home_folder'),
   onServerState: (handler: (state: ServerState) => void) => events('server-state', (p) => handler(p as ServerState)),
   onServerLog: (handler: (line: LogLine) => void) => events('server-log', (p) => handler(p as LogLine)),
 };
