@@ -1,15 +1,82 @@
 import { api, type ProjectInfo } from '../api.ts';
+import { checksFor, pendingCount, runDoctor } from '../checks.ts';
 import { relativeTime, t } from '../i18n/index.ts';
 import { localUrl, showTab, state } from '../state.ts';
 import { h, ltr, rich } from '../ui/dom.ts';
 import { icon } from '../ui/icons.ts';
+import { Terminal, stream } from '../ui/runner.ts';
+import { runFlo } from './actions.ts';
+import { checkName, statusIcon } from './doctor.ts';
 import { languageChips, run, serverButton, typeText } from './project.ts';
 
 /** The FloCMS packages shown first on the Overview, in this order. */
 const MAIN_PACKAGES = ['hostkurd/flocms-core', 'hostkurd/flocms-admin', 'hostkurd/flocms-api'];
 
 export function overviewTab(info: ProjectInfo): HTMLElement {
-  return h('div', { class: 'cards' }, serverCard(info), databaseCard(info), packagesCard(info), projectCard(info));
+  return h(
+    'div',
+    { class: 'stack' },
+    h('div', { class: 'cards' }, serverCard(info), databaseCard(info), packagesCard(info)),
+    h('div', { class: 'cards-wide' }, doctorCard(info), quickCard(info), projectCard(info)),
+  );
+}
+
+/** The checks that need attention (board 1), from both doctors. */
+function doctorCard(info: ProjectInfo): HTMLElement {
+  const c = checksFor(info.path);
+  const items: HTMLElement[] = [];
+  for (const check of c.doctor?.checks ?? []) {
+    if (check.status !== 'ok') items.push(h('div', { class: 'check-row' }, h('span', { class: 'check-name' }, statusIcon(check.status), h('span', null, checkName(check.check))), h('bdi', { class: 'check-detail mono', dir: 'ltr' }, check.detail)));
+  }
+  for (const section of c.admin?.sections ?? []) {
+    for (const line of section.lines) {
+      if (line.status === 'warn' || line.status === 'fail') items.push(h('div', { class: 'check-row admin-line' }, h('span', { class: 'check-name', dir: 'ltr' }, statusIcon(line.status), h('span', null, line.text))));
+    }
+  }
+  const shown = items.slice(0, 6);
+  let summary: HTMLElement | null = null;
+  if (c.doctorLoading) summary = h('p', { class: 'muted' }, t('doctor.running'));
+  else if (!info.hasVendor) summary = h('div', { class: 'hint is-warn' }, rich(t('doctor.noVendor')));
+  else if (c.doctorAt && !items.length) summary = h('div', { class: 'hint is-ok status-line' }, statusIcon('ok', 16), t('doctor.allPassed'));
+  return h(
+    'section',
+    { class: 'card' },
+    h(
+      'div',
+      { class: 'card-head' },
+      h('h2', null, t('tab.doctor')),
+      h('button', { type: 'button', class: 'btn btn-sm', disabled: c.doctorLoading || !info.hasVendor, onclick: () => void runDoctor(info) }, t('doctor.runAgain')),
+    ),
+    summary,
+    shown.length ? h('div', { class: 'rows' }, shown) : null,
+    items.length ? h('div', null, h('button', { type: 'button', class: 'link-btn', onclick: () => showTab('doctor') }, t('overview.allChecks'))) : null,
+  );
+}
+
+/** Quick commands (board 1); their output shows in the card. */
+function quickCard(info: ProjectInfo): HTMLElement {
+  const terminal = new Terminal();
+  terminal.el.hidden = true;
+  terminal.el.style.maxHeight = '220px';
+  let busy = false;
+  const quick = (label: string, args: string[]) =>
+    h('button', { type: 'button', class: 'btn btn-sm', disabled: !info.hasVendor, onclick: async () => {
+      if (busy) return;
+      busy = true;
+      terminal.el.hidden = false;
+      const started = Date.now();
+      const code = await stream({ program: 'flo', cwd: info.path, args }, terminal);
+      const seconds = ((Date.now() - started) / 1000).toFixed(1);
+      terminal.add(code === 0 ? t('quick.done', { seconds }) : t('run.failed', { code: code ?? '?' }), code === 0 ? 'ok' : 'bad');
+      busy = false;
+    } }, label);
+  return h(
+    'section',
+    { class: 'card' },
+    h('h2', null, t('overview.quick')),
+    h('div', { class: 'quick-grid' }, quick(t('quick.cacheClear'), ['cache:clear']), quick(t('quick.viewClear'), ['view:clear']), quick(t('quick.optimize'), ['optimize']), quick(t('quick.optimizeClear'), ['optimize:clear'])),
+    terminal.el,
+  );
 }
 
 function serverCard(info: ProjectInfo): HTMLElement {
@@ -46,7 +113,7 @@ function appUrlNotice(info: ProjectInfo, url: string | null): HTMLElement | null
       'div',
       { class: 'body' },
       h('span', { class: 'small' }, rich(t('server.appUrl', { appUrl: info.appUrl }))),
-      h('div', null, h('button', { type: 'button', class: 'btn btn-sm', onclick: () => run(api.openInEditor(env)) }, t('server.openEnv'))),
+      h('div', null, h('button', { type: 'button', class: 'btn btn-sm', onclick: () => run(api.openInEditor(env)) }, rich(t('server.openEnv')))),
     ),
   );
 }
@@ -91,6 +158,26 @@ function databaseCard(info: ProjectInfo): HTMLElement {
           db.host ? row(t('overview.host'), ltr(db.port ? `${db.host}:${db.port}` : db.host, 'mono')) : null,
         )
       : h('div', { class: 'hint is-warn' }, rich(t('overview.dbNotConfigured'))),
+    db.configured ? migrationsLine(info) : null,
+  );
+}
+
+function migrationsLine(info: ProjectInfo): HTMLElement | null {
+  const c = checksFor(info.path);
+  if (c.databaseLoading && !c.migrations) return h('div', { class: 'hint' }, t('common.loading'));
+  if (c.databaseError) return h('div', { class: 'hint is-bad', dir: 'ltr', style: 'text-align:start' }, ltr(c.databaseError));
+  if (!c.migrations) return null;
+  const pending = pendingCount(c);
+  return h(
+    'div',
+    { class: 'stack', style: 'gap:10px' },
+    h(
+      'div',
+      { class: 'small' },
+      c.db ? t('overview.tables', { count: c.db.tables.length }) + ' · ' : '',
+      pending ? h('strong', { style: 'color:var(--fa-warning)' }, t('db.waiting', { count: pending })) : h('span', { class: 'muted' }, t('db.everythingRan')),
+    ),
+    pending ? h('div', null, h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => run(runFlo(info, t('db.run'), ['migrate']).then(() => undefined)) }, t('db.run'))) : null,
   );
 }
 

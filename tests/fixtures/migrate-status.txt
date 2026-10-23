@@ -1,0 +1,16 @@
++-----------------------------------------------------------------------------+---------+-------+--------+
+| Migration                                                                   | Package | Batch | Status |
++-----------------------------------------------------------------------------+---------+-------+--------+
+| 2026_10_10_000000_create_users_table                                        | app     | 1     | Ran    |
+| 2026_10_17_000000_create_settings_table                                     | app     | 1     | Ran    |
+| 2026_10_23_132928_create_admin_user_preferences_table                       | app     | 1     | Ran    |
+| 2026_10_23_132929_create_media_table                                        | app     | 1     | Ran    |
+| 2026_10_23_132930_create_media_folders_table                                | app     | 1     | Ran    |
+| 2026_10_23_132931_create_admin_trash_and_admin_activity_tables              | app     | 1     | Ran    |
+| 2026_10_23_132932_create_admin_roles_table                                  | app     | 1     | Ran    |
+| 2026_10_23_132933_create_admin_imports_and_admin_import_rows_tables         | app     | 1     | Ran    |
+| 2026_10_23_132934_create_admin_password_resets_table                        | app     | 1     | Ran    |
+| 2026_10_23_132935_create_admin_mailings_and_admin_mailing_recipients_tables | app     | 1     | Ran    |
+| 2026_10_23_132936_create_users_bio_column                                   | app     | 1     | Ran    |
++-----------------------------------------------------------------------------+---------+-------+--------+
+Everything has run.

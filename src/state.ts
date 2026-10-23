@@ -15,8 +15,9 @@ import {
 import { t } from './i18n/index.ts';
 import { urlFor } from './project-type.ts';
 
-export type Tab = 'overview' | 'logs' | 'packages';
-export const TABS: readonly Tab[] = ['overview', 'logs', 'packages'];
+export type Tab = 'overview' | 'database' | 'logs' | 'packages' | 'doctor';
+// In the mockups' order; Generate joins in stage 5
+export const TABS: readonly Tab[] = ['overview', 'database', 'logs', 'packages', 'doctor'];
 
 export type View = { name: 'welcome' } | { name: 'settings' } | { name: 'project'; path: string; tab: Tab };
 
@@ -273,4 +274,15 @@ export async function openPart(path: string, part: 'site' | 'admin' | 'api', lan
     return;
   }
   await api.openUrl(urlFor(localUrl(url), part, language));
+}
+
+/** Opens a page of the site by its path after the language (/admin/accounts). */
+export async function openAt(path: string, relative: string, language: string | null): Promise<void> {
+  if (!state.servers[path]) await startServer(path);
+  const url = await serverUrl(path);
+  if (!url) {
+    toast(t('server.noUrl'), true);
+    return;
+  }
+  await api.openUrl(`${localUrl(url).replace(/\/+$/, '')}/${language || 'en'}${relative.startsWith('/') ? relative : '/' + relative}`);
 }

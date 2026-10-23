@@ -9,7 +9,8 @@ Studio speaks English, Arabic and Kurdish (Sorani), right to left where the
 language is.
 
 > Status: v0.1 in progress. Built so far: the window, the project list,
-> project Overview and Packages, Settings, running the site and its logs.
+> project Overview, Database, Doctor and Packages, Settings, running the
+> site and its logs.
 
 ## What you need
 

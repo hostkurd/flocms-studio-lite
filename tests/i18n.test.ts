@@ -45,3 +45,11 @@ test('code parts (backticks) match the English ones', () => {
     }
   }
 });
+
+test('no hidden direction marks: code goes in backticks instead', () => {
+  for (const [name, dict] of Object.entries({ en, ar, ku })) {
+    for (const [key, text] of Object.entries(dict)) {
+      assert.doesNotMatch(text, /[‎‏‪-‮⁦-⁩]/, `${name} ${key}`);
+    }
+  }
+});

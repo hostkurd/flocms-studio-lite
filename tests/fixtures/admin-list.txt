@@ -1,0 +1,26 @@
+
+Admin resources
+===============
+
++----------+-----------------+-------+----------------------------------------------+----------+
+| Resource | URL             | Table | Permissions                                  | Class    |
++----------+-----------------+-------+----------------------------------------------+----------+
+| Users    | /admin/accounts | users | users.manage (+create, update, delete)       | built in |
+| Media    | /admin/media    | media | content.media.view (+create, update, delete) | built in |
++----------+-----------------+-------+----------------------------------------------+----------+
+
+Settings pages
+--------------
++-------------+----------------------------+---------+--------+----------------+
+| Page        | URL                        | Keys    | Fields | Permission     |
++-------------+----------------------------+---------+--------+----------------+
+| Admin panel | /admin/settings/edit/panel | panel.* | 7      | settings.panel |
++-------------+----------------------------+---------+--------+----------------+
+
+Dashboard widgets
+-----------------
+! None: the dashboard shows resource counts. Create one with php flo make:admin-widget Overview
+
+Panel pages
+-----------
+! None: php flo make:admin-page SalesReport --view --table

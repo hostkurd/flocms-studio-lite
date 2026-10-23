@@ -53,6 +53,26 @@ export interface LogLine {
   at: number;
 }
 
+/** A finished short command */
+export interface CommandOutput {
+  code: number | null;
+  stdout: string;
+  stderr: string;
+  /** As typed: php flo doctor --format=json */
+  command: string;
+}
+
+export interface TaskLine {
+  id: string;
+  stream: 'out' | 'err';
+  line: string;
+}
+
+export interface TaskExit {
+  id: string;
+  code: number | null;
+}
+
 export type Home = 'site' | 'admin' | 'api';
 
 export interface ProjectSummary {
@@ -153,6 +173,13 @@ export const api = {
   serverStates: () => call<ServerState[]>('server_states'),
   serverLogs: (path: string) => call<LogLine[]>('server_logs', { path }),
   serverClearLogs: (path: string) => call<void>('server_clear_logs', { path }),
+  floCapture: (path: string, args: string[]) => call<CommandOutput>('flo_capture', { path, args }),
+  /** Starts a long command; lines come as task-output, the end as task-exit. Returns the command as shown. */
+  taskStart: (task: { id: string; program: 'flo' | 'composer'; cwd: string; args: string[]; stdin?: string; env?: [string, string][] }) =>
+    call<string>('task_start', task),
+  taskCancel: (id: string) => call<void>('task_cancel', { id }),
+  onTaskOutput: (handler: (line: TaskLine) => void) => events('task-output', (p) => handler(p as TaskLine)),
+  onTaskExit: (handler: (exit: TaskExit) => void) => events('task-exit', (p) => handler(p as TaskExit)),
   onServerState: (handler: (state: ServerState) => void) => events('server-state', (p) => handler(p as ServerState)),
   onServerLog: (handler: (line: LogLine) => void) => events('server-log', (p) => handler(p as LogLine)),
 };

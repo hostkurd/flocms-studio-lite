@@ -2,6 +2,7 @@
 // only when what it shows changes (so forms keep their focus and input).
 
 import { resolveLanguage, setLanguage, t } from './i18n/index.ts';
+import { checksVersion } from './checks.ts';
 import { state, subscribe } from './state.ts';
 import { h } from './ui/dom.ts';
 import { projectView } from './views/project.ts';
@@ -42,7 +43,7 @@ function keyFor(): string {
   const server = state.servers[view.path];
   // A new object after each load, so a reload redraws; and the server's state
   const run = `${server ? 'on' : 'off'}:${server?.url ?? ''}:${state.busy[view.path] ?? ''}`;
-  return `project:${view.path}:${view.tab}:${info ? infoVersion(info) : 'loading'}:${run}`;
+  return `project:${view.path}:${view.tab}:${info ? infoVersion(info) : 'loading'}:${run}:${checksVersion()}`;
 }
 
 const versions = new WeakMap<object, number>();

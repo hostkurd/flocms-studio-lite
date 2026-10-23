@@ -5,14 +5,19 @@ import { TABS, isInfo, openPart, refreshProjects, showHome, showTab, startServer
 import { h, ltr, plain, rich } from '../ui/dom.ts';
 import { errorText } from '../ui/errors.ts';
 import { icon } from '../ui/icons.ts';
+import { loadChecks } from '../checks.ts';
+import { databaseTab } from './database.ts';
+import { doctorTab } from './doctor.ts';
 import { logsTab } from './logs.ts';
 import { overviewTab } from './overview.ts';
 import { packagesTab } from './packages.ts';
 
 const TAB_LABELS: Record<Tab, Key> = {
   overview: 'tab.overview',
+  database: 'tab.database',
   logs: 'tab.logs',
   packages: 'tab.packages',
+  doctor: 'tab.doctor',
 };
 
 export function projectView(path: string, tab: Tab): HTMLElement {
@@ -39,13 +44,19 @@ export function projectView(path: string, tab: Tab): HTMLElement {
     );
   }
 
+  // The checks run the project's own commands: once when it opens
+  if (isInfo(info)) loadChecks(info);
   const content = !isInfo(info)
     ? h('p', { class: 'muted' }, t('common.loading'))
     : tab === 'packages'
       ? packagesTab(info)
       : tab === 'logs'
         ? logsTab(info)
-        : overviewTab(info);
+        : tab === 'database'
+          ? databaseTab(info)
+          : tab === 'doctor'
+            ? doctorTab(info)
+            : overviewTab(info);
 
   return h(
     'div',
