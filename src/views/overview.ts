@@ -5,7 +5,9 @@ import { localUrl, showTab, state } from '../state.ts';
 import { h, ltr, rich } from '../ui/dom.ts';
 import { icon } from '../ui/icons.ts';
 import { Terminal, stream } from '../ui/runner.ts';
+import type { GeneratorId } from '../generators.ts';
 import { runFlo } from './actions.ts';
+import { openGenerator } from './generate.ts';
 import { checkName, statusIcon } from './doctor.ts';
 import { languageChips, run, serverButton, typeText } from './project.ts';
 
@@ -59,6 +61,7 @@ function quickCard(info: ProjectInfo): HTMLElement {
   terminal.el.hidden = true;
   terminal.el.style.maxHeight = '220px';
   let busy = false;
+  const shortcut = (label: string, id: GeneratorId) => h('button', { type: 'button', class: 'btn btn-sm', onclick: () => openGenerator(info.path, id) }, label);
   const quick = (label: string, args: string[]) =>
     h('button', { type: 'button', class: 'btn btn-sm', disabled: !info.hasVendor, onclick: async () => {
       if (busy) return;
@@ -74,6 +77,13 @@ function quickCard(info: ProjectInfo): HTMLElement {
     'section',
     { class: 'card' },
     h('h2', null, t('overview.quick')),
+    // Board 1: the generators most used, opening the Generate tab
+    h(
+      'div',
+      { class: 'quick-grid' },
+      info.hasAdmin && info.hasVendor ? [shortcut(t('quick.newResource'), 'resource'), shortcut(t('quick.newPage'), 'page'), shortcut(t('quick.newBlock'), 'block')] : null,
+      info.hasVendor ? shortcut(t('quick.newMigration'), 'migration') : null,
+    ),
     h('div', { class: 'quick-grid' }, quick(t('quick.cacheClear'), ['cache:clear']), quick(t('quick.viewClear'), ['view:clear']), quick(t('quick.optimize'), ['optimize']), quick(t('quick.optimizeClear'), ['optimize:clear'])),
     terminal.el,
   );

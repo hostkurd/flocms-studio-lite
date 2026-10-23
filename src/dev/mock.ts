@@ -176,6 +176,9 @@ async function handle(command: string, args: Record<string, unknown> = {}): Prom
       return capture(String(args.path), args.args as string[]);
     case 'task_start':
       return startTask(args as { id: string; program: string; args: string[] });
+    case 'generator_preview':
+      await wait(700);
+      return previewOf(args.args as string[]);
     case 'task_cancel':
       return null;
     case 'folder_status':
@@ -334,4 +337,23 @@ function startTask(task: { id: string; program: string; args: string[] }): strin
   }
   setTimeout(() => emit('task-exit', { id: task.id, code: 0 }), 1100);
   return shown;
+}
+
+// A real make:admin-resource Property --migration, as the preview returns it
+const RESOURCE_FILE = "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Admin\\Resources;\n\nuse FloCMS\\Admin\\Form\\Fields\\TextInput;\nuse FloCMS\\Admin\\Form\\Form;\nuse FloCMS\\Admin\\Resource;\nuse FloCMS\\Admin\\Table\\Columns\\DateColumn;\nuse FloCMS\\Admin\\Table\\Columns\\TextColumn;\nuse FloCMS\\Admin\\Table\\Table;\n\nfinal class PropertyResource extends Resource\n{\n    protected static string $table = 'properties';\n\n    // URL: /admin/properties\n    protected static string $slug = 'properties';\n\n    protected static bool $timestamps = true;\n\n    protected static string $label = 'Property';\n    protected static string $pluralLabel = 'Properties';\n    protected static ?string $icon = 'list';\n\n    // How Create and Edit open: 'page' (full page), 'modal' (dialog) or 'slide-over'\n    protected static string $formMode = 'page';\n\n    public function form(Form $form): Form\n    {\n        return $form->schema([\n            TextInput::make('title')->translatable()->rules('required|max:190')->columnSpan(2),\n            // Related records (see docs/relationships.md in flocms-admin):\n            // \\FloCMS\\Admin\\Form\\Fields\\BelongsTo::make('category_id')->resource(CategoryResource::class),\n            // \\FloCMS\\Admin\\Form\\Fields\\BelongsToMany::make('tags')->resource(TagResource::class)->pivot('properties_tags', 'item_id', 'tag_id'),\n        ]);\n    }\n\n    public function table(Table $table): Table\n    {\n        return $table\n            ->columns([\n                TextColumn::make('id')->sortable()->toggleable(),   // ->toggleable(): listed in the Columns menu\n                TextColumn::make('title')->searchable()->sortable(),\n                DateColumn::make('updated_at')->sortable()->toggleable(),\n            ])\n            ->defaultSort('id', 'desc');\n    }\n}\n";
+const MIGRATION_FILE = "<?php\ndeclare(strict_types=1);\n\nuse FloCMS\\CLI\\Database\\Migration;\nuse FloCMS\\Core\\Database;\n\n/**\n * Table for PropertyResource (flocms-admin). Translatable fields are JSON columns:\n * {\"en\":\"...\",\"ar\":\"...\",\"el\":\"...\"}.\n */\nreturn new class extends Migration\n{\n    public function up(Database $db): void\n    {\n        $json = $db->driver() === 'sqlite' ? 'TEXT' : 'JSON';\n\n        $db->query('CREATE TABLE IF NOT EXISTS `properties` (\n            ' . $this->id($db) . ',\n            `title` ' . $json . ' NULL,\n            `created_at` DATETIME NULL,\n            `updated_at` DATETIME NULL\n        )' . $this->tableOptions($db));\n    }\n\n    public function down(Database $db): void\n    {\n        $db->query('DROP TABLE IF EXISTS `properties`');\n    }\n};\n";
+
+function previewOf(argv: string[]): unknown {
+  const name = argv[1] ?? 'Property';
+  const command = 'php flo ' + argv.join(' ');
+  if (argv[0] !== 'make:admin-resource') {
+    return { output: { code: 0, stdout: '[OK] Created.\n', stderr: '', command }, files: [] };
+  }
+  const files: unknown[] = [{ path: `admin/Resources/${name}Resource.php`, change: 'created', content: RESOURCE_FILE.replaceAll('Property', name), before: null }];
+  let stdout = `[OK] Created admin/Resources/${name}Resource.php (URL: /admin/properties, table: properties)\n`;
+  if (argv.includes('--migration')) {
+    files.push({ path: 'database/migrations/2026_10_23_151840_create_properties_table.php', change: 'created', content: MIGRATION_FILE, before: null });
+    stdout += '[OK] Created database/migrations/2026_10_23_151840_create_properties_table.php\n';
+  }
+  return { output: { code: 0, stdout, stderr: '', command }, files };
 }

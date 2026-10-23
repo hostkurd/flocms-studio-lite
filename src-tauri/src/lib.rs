@@ -2,6 +2,7 @@ mod commands;
 mod envfile;
 mod error;
 mod events;
+mod preview;
 mod project;
 mod server;
 mod settings;
@@ -32,6 +33,8 @@ pub fn run() {
             let servers = server::Servers::default();
             // Stops servers a crash left running (D6)
             servers.init(&config_dir);
+            // Preview copies left by a Studio closed during a preview
+            std::thread::spawn(preview::clean_leftovers);
             app.manage(AppState {
                 config_dir,
                 settings: Mutex::new(settings),
@@ -63,6 +66,7 @@ pub fn run() {
             commands::folder_status,
             commands::env_set,
             commands::home_folder,
+            commands::generator_preview,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting FloCMS Studio")

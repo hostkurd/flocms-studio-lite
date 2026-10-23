@@ -15,9 +15,9 @@ import {
 import { t } from './i18n/index.ts';
 import { urlFor } from './project-type.ts';
 
-export type Tab = 'overview' | 'database' | 'logs' | 'packages' | 'doctor';
+export type Tab = 'overview' | 'generate' | 'database' | 'logs' | 'packages' | 'doctor';
 // In the mockups' order; Generate joins in stage 5
-export const TABS: readonly Tab[] = ['overview', 'database', 'logs', 'packages', 'doctor'];
+export const TABS: readonly Tab[] = ['overview', 'generate', 'database', 'logs', 'packages', 'doctor'];
 
 export type View = { name: 'welcome' } | { name: 'settings' } | { name: 'wizard' } | { name: 'project'; path: string; tab: Tab };
 
