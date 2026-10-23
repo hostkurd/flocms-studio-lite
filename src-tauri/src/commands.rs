@@ -10,6 +10,7 @@ use crate::error::{Result, StudioError};
 use crate::project::{self, ProjectInfo, ProjectSummary};
 use crate::server::{LogLine, ServerState};
 use crate::settings::Settings;
+use crate::tasks::{self, Output, Program};
 use crate::tools::{self, Tools};
 use crate::AppState;
 
@@ -132,4 +133,35 @@ pub fn server_logs(state: State<'_, AppState>, path: String) -> Vec<LogLine> {
 #[tauri::command]
 pub fn server_clear_logs(state: State<'_, AppState>, path: String) {
     state.servers.clear_logs(&path)
+}
+
+/// Runs a short `php flo` command in a project and returns its output.
+#[tauri::command]
+pub async fn flo_capture(state: State<'_, AppState>, path: String, args: Vec<String>) -> Result<Output> {
+    let settings = settings(&state);
+    tauri::async_runtime::spawn_blocking(move || tasks::capture(&settings, Program::Flo, Path::new(&path), &args))
+        .await
+        .map_err(|e| StudioError::new("io", e.to_string()))?
+}
+
+/// Starts a long command; returns the command line as shown on screen.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub fn task_start(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+    program: Program,
+    cwd: String,
+    args: Vec<String>,
+    stdin: Option<String>,
+    env: Option<Vec<(String, String)>>,
+) -> Result<String> {
+    let settings = settings(&state);
+    state.tasks.start(&app, &settings, id, program, PathBuf::from(cwd), args, stdin, env.unwrap_or_default())
+}
+
+#[tauri::command]
+pub fn task_cancel(state: State<'_, AppState>, id: String) {
+    state.tasks.cancel(&id)
 }

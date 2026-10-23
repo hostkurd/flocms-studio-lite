@@ -171,6 +171,13 @@ async function handle(command: string, args: Record<string, unknown> = {}): Prom
     case 'server_clear_logs':
       lines[String(args.path)] = [];
       return null;
+    case 'flo_capture':
+      await wait(300);
+      return capture(String(args.path), args.args as string[]);
+    case 'task_start':
+      return startTask(args as { id: string; program: string; args: string[] });
+    case 'task_cancel':
+      return null;
     case 'open_in_editor':
     case 'open_folder':
     case 'open_url':
@@ -193,4 +200,116 @@ export function installMock(): void {
   // ?running=1: fectumhellas runs already, as after a reload
   if (params.has('running') && projects[0]) startServer(projects[0].path);
   console.info('[mock] FloCMS Studio is using sample data (no Tauri).');
+}
+
+// ---- php flo output, as the real commands print it ------------------------
+
+const DOCTOR = {
+  ok: true,
+  failed: 0,
+  warnings: 2,
+  checks: [
+    ['ok', 'PHP version', '8.3.12'],
+    ['ok', 'Extension pdo', 'loaded'],
+    ['ok', 'Extension mbstring', 'loaded'],
+    ['ok', 'Extension fileinfo', 'loaded'],
+    ['ok', 'Extension gd', 'loaded'],
+    ['ok', 'Extension openssl', 'loaded'],
+    ['ok', 'Extension curl', 'loaded'],
+    ['ok', 'Extension pdo_mysql', 'loaded'],
+    ['ok', 'Composer dependencies', 'installed'],
+    ['ok', 'storage/', 'writable'],
+    ['ok', 'storage/logs/', 'writable'],
+    ['warn', 'storage/cache/', 'missing'],
+    ['ok', 'views/cache/', 'writable'],
+    ['ok', '.env file', 'present'],
+    ['ok', '.env keys', 'complete'],
+    ['ok', 'APP_KEY', 'set'],
+    ['ok', 'APP_URL', 'http://127.0.0.1:8000'],
+    ['ok', 'APP_DEBUG', 'true (local)'],
+    ['ok', 'Database', 'connected (mysql)'],
+    ['warn', 'Migrations', '2 pending: run php flo migrate'],
+    ['ok', 'public/.htaccess', 'rewrite rules present'],
+    ['ok', 'Document root', 'point the document root at public/ (the root .htaccess forwards there as a fallback)'],
+    ['ok', 'Maintenance mode', 'off'],
+  ].map(([status, check, detail]) => ({ status, check, detail })),
+};
+
+const ADMIN_DOCTOR = `
+flocms-admin 0.39.3
+===================
+
+  ✓ config/admin.php found
+  ✓ Languages: en, ar, el (default en)
+  ✓ Panel pages: /admin/dashboard, /admin/settings, /admin/accounts, /admin/profile
+
+App\\Admin\\Resources\\PropertyResource  (/admin/properties)
+------------------------------------------------------
+  ✗ Your site has a PropertiesController, which always wins: the panel's /admin/properties pages are not shown.
+  ✓ Table "properties" (14 columns)
+  ! PropertyResource: table() has no defaultSort(): rows may change places between pages; sort by a unique column such as id
+
+Media library  (/admin/media)
+-----------------------------
+  ✓ Table "media"
+  ✓ Table "media_folders" (folders)
+  Permissions: content.media.view, …create, …update, …delete
+`;
+
+const MIGRATIONS = [
+  ['2026_10_10_000000_create_users_table', 'app', '1', 'Ran'],
+  ['2026_10_10_000000_create_api_tables', 'hostkurd/flocms-api', '1', 'Ran'],
+  ['2026_10_17_000000_create_settings_table', 'app', '1', 'Ran'],
+  ['2026_10_20_091200_create_properties_table', 'app', '3', 'Ran (changed since)'],
+  ['2026_10_22_140500_add_featured_to_properties', 'app', '', 'Pending'],
+  ['2026_10_22_141000_create_admin_mailings_table', 'app', '', 'Pending'],
+];
+
+function table(rows: string[][], head: string[]): string {
+  const widths = head.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] ?? '').length)));
+  const border = '+' + widths.map((w) => '-'.repeat(w + 2)).join('+') + '+';
+  const line = (cells: string[]) => '| ' + cells.map((c, i) => c.padEnd(widths[i]!)).join(' | ') + ' |';
+  return [border, line(head), border, ...rows.map(line), border].join('\n');
+}
+
+function capture(path: string, argv: string[]): unknown {
+  const command = 'php flo ' + argv.join(' ');
+  const out = (stdout: string, code = 0, stderr = '') => ({ code, stdout, stderr, command });
+  const p = projects.find((x) => x.path === path);
+  switch (argv[0]) {
+    case 'doctor':
+      return out(JSON.stringify(DOCTOR));
+    case 'admin:doctor':
+      return out(ADMIN_DOCTOR + '\n', 1, ' ERROR  1 problem(s), 1 warning(s).\n');
+    case 'migrate:status':
+      if (!p?.database.configured) return out('', 1, ' [ERROR] The database is not configured.');
+      return out(table(MIGRATIONS, ['Migration', 'Package', 'Batch', 'Status']) + '\n2 pending; run "php flo migrate".\n');
+    case 'db:show':
+      return out(JSON.stringify({ connection: { driver: 'mysql', database: 'fectumhellas', server: '11.4.3-MariaDB' }, tables: [
+        { table: 'properties', rows: 128 }, { table: 'property_images', rows: 2904 }, { table: 'pages', rows: 14 }, { table: 'users', rows: 6 },
+        { table: 'settings', rows: 41 }, { table: 'media', rows: 512 }, { table: 'admin_activity', rows: 2310 }, { table: 'migrations', rows: 22 },
+      ] }));
+    case 'admin:list':
+      return out(table([['Users', '/admin/accounts', 'users', 'users.manage', 'built in'], ['Media', '/admin/media', 'media', 'content.media.view', 'built in'], ['Properties', '/admin/properties', 'properties', 'content.properties.view', 'App\\Admin\\Resources\\PropertyResource']], ['Resource', 'URL', 'Table', 'Permissions', 'Class']));
+    default:
+      return out('');
+  }
+}
+
+function startTask(task: { id: string; program: string; args: string[] }): string {
+  const shown = (task.program === 'flo' ? 'php flo ' : 'composer ') + task.args.join(' ');
+  const say = (line: string, stream: 'out' | 'err' = 'out', after = 0) =>
+    setTimeout(() => emit('task-output', { id: task.id, stream, line }), after);
+  if (task.args[0] === 'migrate') {
+    say('  Migrating 2026_10_22_140500_add_featured_to_properties ... done', 'out', 300);
+    say('  Migrating 2026_10_22_141000_create_admin_mailings_table ... done', 'out', 700);
+    say('[OK] 2 migration(s) ran (batch 4).', 'out', 900);
+  } else if (task.args[0] === 'optimize') {
+    say('18/18 [============================] 100%', 'err', 200);
+    say('[OK] 18 template(s) compiled into views/cache.', 'out', 400);
+  } else {
+    say('[OK] Done.', 'out', 300);
+  }
+  setTimeout(() => emit('task-exit', { id: task.id, code: 0 }), 1100);
+  return shown;
 }

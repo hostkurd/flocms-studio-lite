@@ -4,6 +4,7 @@ mod events;
 mod project;
 mod server;
 mod settings;
+mod tasks;
 mod tools;
 
 use std::path::PathBuf;
@@ -16,6 +17,7 @@ pub struct AppState {
     pub config_dir: PathBuf,
     pub settings: Mutex<settings::Settings>,
     pub servers: server::Servers,
+    pub tasks: tasks::Tasks,
 }
 
 pub fn run() {
@@ -29,7 +31,12 @@ pub fn run() {
             let servers = server::Servers::default();
             // Stops servers a crash left running (D6)
             servers.init(&config_dir);
-            app.manage(AppState { config_dir, settings: Mutex::new(settings), servers });
+            app.manage(AppState {
+                config_dir,
+                settings: Mutex::new(settings),
+                servers,
+                tasks: tasks::Tasks::default(),
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -49,13 +56,18 @@ pub fn run() {
             commands::server_states,
             commands::server_logs,
             commands::server_clear_logs,
+            commands::flo_capture,
+            commands::task_start,
+            commands::task_cancel,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting FloCMS Studio")
         .run(|app, event| {
             // Studio owns the servers it started: they stop when it quits (D6)
             if let tauri::RunEvent::Exit = event {
-                app.state::<AppState>().servers.stop_all();
+                let state = app.state::<AppState>();
+                state.servers.stop_all();
+                state.tasks.cancel_all();
             }
         });
 }

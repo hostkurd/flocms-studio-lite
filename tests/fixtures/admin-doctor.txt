@@ -1,0 +1,68 @@
+
+flocms-admin 0.39.3
+===================
+
+  ✓ config/admin.php found
+  ✓ Languages: en, ar, ku (default en)
+  ✓ Admin layout: templates/default/layouts/admin.html
+  ✓ Panel pages: /admin/dashboard, /admin/settings, /admin/accounts, /admin/profile
+  ! No resources yet: php flo make:admin-resource Post --migration
+
+FloCMS\Admin\Users\UsersResource  (/admin/accounts)
+---------------------------------------------------
+  ✓ Permissions: users.manage, users.manage, users.manage, users.manage
+  CSV: export (content.accounts.export), import (content.accounts.import + create)
+  ✓ Table "users" (15 columns)
+
+Settings and preferences
+------------------------
+  ✓ No website settings pages (optional: php flo make:admin-settings)
+  ✓ Admin panel settings page (settings.panel)
+  ✓ Settings uploads: /home/claude/t-admin/public/uploads/settings (served at /uploads/settings)
+  ✓ Table "settings"
+  ✓ Table "admin_user_preferences"
+
+Media library  (/admin/media)
+-----------------------------
+  ✓ Table "media"
+  ✓ Table "media_usage"
+  ✓ Table "media_folders" (folders)
+  ✓ Files in /home/claude/t-admin/public/uploads/editor/library (served at /uploads/editor/library)
+  Permissions: content.media.view, …create, …update, …delete
+
+Trash and activity log  (/admin/trash, /admin/activity)
+-------------------------------------------------------
+  ✓ Table "admin_trash" (trash)
+  ✓ Table "admin_activity" (activity log)
+  Trash: records are kept 30 days; php flo admin:trash-purge deletes older ones (panel pages do it hourly).
+  Activity log: entries are kept 365 days. The Activity page needs the permission activity.view.
+
+Roles  (/admin/roles)
+---------------------
+  ✓ Table "admin_roles": no changes, the roles of config/config.php apply
+  The page needs the permission roles.manage (Super Admin has it through *). php flo admin:roles lists the roles in force; php flo admin:roles-reset undoes changes.
+
+CSV import and export  (/admin/<slug>/import, /admin/imports)
+-------------------------------------------------------------
+  Export: on, up to 50,000 rows a file
+  ✓ Table "admin_imports"
+  ✓ Table "admin_import_rows"
+  Import: up to 10,000 rows and 10 MB a file, 100 rows a request, Undo for 7 days.
+  The browser sends files in parts of 2 MB, so PHP's upload_max_filesize (2M) only limits pages without JavaScript.
+  php flo admin:import-purge removes old upload files (panel pages do it hourly).
+
+Forgot password  (/admin/password/forgot)
+-----------------------------------------
+  ✓ Table "admin_password_resets"
+  ✓ Email: PHP mail(), from info@flocms.com. Check it with: php flo admin:mail-test you@example.com
+  Links work once, for 60 minutes; 3 requests an hour per address, 10 per IP address.
+
+Login security  (/admin/profile/security)
+-----------------------------------------
+  Off: add 'two_factor' => true and/or 'email_verification' => true to config/admin.php.
+
+Pages  (/admin/site-pages)
+--------------------------
+  Off: add 'pages' => true to config/admin.php to manage the website's pages in the panel.
+
+[OK] Usable, with 1 warning(s).

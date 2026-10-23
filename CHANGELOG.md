@@ -2,6 +2,13 @@
 
 ## Unreleased (0.1.0)
 
+### Stage 3: Overview, Doctor and Database
+- Doctor tab (D4, board 7): `php flo doctor --format=json` with the check names in the reader's language and the details as the command wrote them; `php flo admin:doctor` line by line (✓ ! ✗), problems and warnings first, every line and the full output one click away.
+- Database tab (board 5): connection, migrations from `php flo migrate:status` (waiting, ran, changed since, file missing; the package of package migrations), Run migrations, Undo last batch, Fill with seed data, Delete all tables (asks for the database name); tables and row counts from `php flo db:show --format=json`, with Open in admin for resources (`php flo admin:list`).
+- On a production site (`APP_ENV=production`) Studio asks before migrate, rollback, seed and fresh, then runs them with `--force` (the CLI refuses without it when nobody can answer).
+- Overview: tables and waiting migrations with Run migrations, the checks that need attention, quick commands (clear cache, clear compiled views, optimize, undo optimize) with their output.
+- Long commands run in a dialog with their live output and how they ended; only the commands the screens use are allowed.
+
 ### Stage 2: server and logs
 - Start and stop `php flo serve` per project (D6), on the first free port from the one in Settings; "Other devices on my network" serves on 0.0.0.0.
 - Stopping ends `php -S` too: the server runs in its own process group (macOS, Linux) or is stopped with its process tree (Windows).

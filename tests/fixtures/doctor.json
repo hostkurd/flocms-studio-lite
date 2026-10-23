@@ -1,0 +1,122 @@
+{
+    "ok": true,
+    "failed": 0,
+    "warnings": 1,
+    "checks": [
+        {
+            "status": "ok",
+            "check": "PHP version",
+            "detail": "8.3.6"
+        },
+        {
+            "status": "ok",
+            "check": "Extension pdo",
+            "detail": "loaded"
+        },
+        {
+            "status": "ok",
+            "check": "Extension mbstring",
+            "detail": "loaded"
+        },
+        {
+            "status": "ok",
+            "check": "Extension fileinfo",
+            "detail": "loaded"
+        },
+        {
+            "status": "ok",
+            "check": "Extension gd",
+            "detail": "loaded"
+        },
+        {
+            "status": "ok",
+            "check": "Extension openssl",
+            "detail": "loaded"
+        },
+        {
+            "status": "ok",
+            "check": "Extension curl",
+            "detail": "loaded"
+        },
+        {
+            "status": "ok",
+            "check": "Extension pdo_sqlite",
+            "detail": "loaded"
+        },
+        {
+            "status": "ok",
+            "check": "Composer dependencies",
+            "detail": "installed"
+        },
+        {
+            "status": "ok",
+            "check": "storage/",
+            "detail": "writable"
+        },
+        {
+            "status": "ok",
+            "check": "storage/logs/",
+            "detail": "writable"
+        },
+        {
+            "status": "warn",
+            "check": "storage/cache/",
+            "detail": "missing"
+        },
+        {
+            "status": "ok",
+            "check": "views/cache/",
+            "detail": "writable"
+        },
+        {
+            "status": "ok",
+            "check": ".env file",
+            "detail": "present"
+        },
+        {
+            "status": "ok",
+            "check": ".env keys",
+            "detail": "complete"
+        },
+        {
+            "status": "ok",
+            "check": "APP_KEY",
+            "detail": "set"
+        },
+        {
+            "status": "ok",
+            "check": "APP_URL",
+            "detail": "http://localhost"
+        },
+        {
+            "status": "ok",
+            "check": "APP_DEBUG",
+            "detail": "true (local)"
+        },
+        {
+            "status": "ok",
+            "check": "Database",
+            "detail": "connected (sqlite)"
+        },
+        {
+            "status": "ok",
+            "check": "Migrations",
+            "detail": "up to date"
+        },
+        {
+            "status": "ok",
+            "check": "public/.htaccess",
+            "detail": "rewrite rules present"
+        },
+        {
+            "status": "ok",
+            "check": "Document root",
+            "detail": "point the document root at public/ (the root .htaccess forwards there as a fallback)"
+        },
+        {
+            "status": "ok",
+            "check": "Maintenance mode",
+            "detail": "off"
+        }
+    ]
+}

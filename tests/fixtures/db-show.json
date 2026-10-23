@@ -1,0 +1,73 @@
+{
+    "connection": {
+        "driver": "sqlite",
+        "database": "/home/claude/t-admin/storage/database.sqlite",
+        "server": "3.45.1"
+    },
+    "tables": [
+        {
+            "table": "admin_activity",
+            "rows": 0
+        },
+        {
+            "table": "admin_import_rows",
+            "rows": 0
+        },
+        {
+            "table": "admin_imports",
+            "rows": 0
+        },
+        {
+            "table": "admin_mail_optouts",
+            "rows": 0
+        },
+        {
+            "table": "admin_mailing_recipients",
+            "rows": 0
+        },
+        {
+            "table": "admin_mailings",
+            "rows": 0
+        },
+        {
+            "table": "admin_password_resets",
+            "rows": 0
+        },
+        {
+            "table": "admin_roles",
+            "rows": 0
+        },
+        {
+            "table": "admin_trash",
+            "rows": 0
+        },
+        {
+            "table": "admin_user_preferences",
+            "rows": 0
+        },
+        {
+            "table": "media",
+            "rows": 0
+        },
+        {
+            "table": "media_folders",
+            "rows": 0
+        },
+        {
+            "table": "media_usage",
+            "rows": 0
+        },
+        {
+            "table": "migrations",
+            "rows": 11
+        },
+        {
+            "table": "settings",
+            "rows": 0
+        },
+        {
+            "table": "users",
+            "rows": 0
+        }
+    ]
+}
