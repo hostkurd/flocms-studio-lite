@@ -141,6 +141,22 @@ pub fn composer_command(settings: &Settings) -> Result<Command> {
     }
 }
 
+/// The Composer that `php flo setup` should call (it reads COMPOSER_BINARY):
+/// only a file it can run, a .bat or a PHP file (the phar), else none and
+/// setup uses `composer` from PATH.
+pub fn composer_binary(settings: &Settings) -> Option<String> {
+    let path = composer(settings).ok()?;
+    let name = path.to_string_lossy().to_lowercase();
+    if name.ends_with(".bat") || name.ends_with(".phar") {
+        return Some(path.to_string_lossy().into_owned());
+    }
+    let mut head = [0u8; 64];
+    let read = std::fs::File::open(&path).and_then(|mut f| f.read(&mut head)).ok()?;
+    let head = String::from_utf8_lossy(&head[..read]);
+    (head.starts_with("<?php") || (head.starts_with("#!") && head.lines().next().is_some_and(|l| l.contains("php"))))
+        .then(|| path.to_string_lossy().into_owned())
+}
+
 pub struct Captured {
     pub code: Option<i32>,
     pub stdout: String,
@@ -283,6 +299,31 @@ fn tool_from(path: &Path, result: Result<Captured>, version: impl Fn(&str) -> Op
     }
 }
 
+/// A line as a person reads it: without colour codes (ESC [ … m) and other
+/// control characters (Composer draws its progress bars with backspaces).
+pub fn clean_line(line: &str) -> String {
+    let mut out = String::with_capacity(line.len());
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\u{1b}' {
+            // CSI: ESC [ parameters final-byte; other escapes: ESC + one char
+            if chars.peek() == Some(&'[') {
+                chars.next();
+                for next in chars.by_ref() {
+                    if ('@'..='~').contains(&next) {
+                        break;
+                    }
+                }
+            } else {
+                chars.next();
+            }
+        } else if c == '\t' || !c.is_control() {
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// "Composer version 2.8.4 2024-12-11 10:57:47" -> "2.8.4"
 pub fn composer_version(output: &str) -> Option<String> {
     output
@@ -352,6 +393,14 @@ mod tests {
             Some("2.9.1")
         );
         assert_eq!(composer_version("nothing"), None);
+    }
+
+    #[test]
+    fn cleans_control_characters() {
+        assert_eq!(clean_line("\u{1b}[32m[OK]\u{1b}[39m done"), "[OK] done");
+        assert_eq!(clean_line("\u{8}\u{8}\u{8}Installing (2.0.0)"), "Installing (2.0.0)");
+        assert_eq!(clean_line("a\tb"), "a\tb");
+        assert_eq!(clean_line("کوردی ✓"), "کوردی ✓");
     }
 
     #[test]

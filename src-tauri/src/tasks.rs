@@ -30,6 +30,7 @@ const FLO_COMMANDS: &[&str] = &[
     "admin:install",
     "admin:list",
     "api:install",
+    "db:check",
     "db:show",
     "db:seed",
     "migrate",
@@ -121,6 +122,10 @@ fn build(
             }
             let mut c = tools::command(&tools::php(settings)?);
             c.arg(cwd.join("flo"));
+            // php flo setup runs `composer require`: the same Composer as Studio
+            if let Some(binary) = tools::composer_binary(settings) {
+                c.env("COMPOSER_BINARY", binary);
+            }
             c
         }
         Program::Composer => tools::composer_command(settings)?,
@@ -195,7 +200,11 @@ impl Tasks {
                         Ok(_) => {
                             let text = String::from_utf8_lossy(&buffer);
                             for piece in text.trim_end_matches(['\n', '\r']).split('\r') {
-                                app.send("task-output", TaskLine { id: id.clone(), stream, line: piece.to_string() });
+                                let line = tools::clean_line(piece);
+                                if line.trim().is_empty() && !piece.is_empty() {
+                                    continue; // a progress bar redrawn with backspaces
+                                }
+                                app.send("task-output", TaskLine { id: id.clone(), stream, line });
                             }
                         }
                     }
@@ -246,6 +255,7 @@ mod tests {
         assert!(allowed(Program::Flo, &args(&["doctor", "--format=json"])));
         assert!(allowed(Program::Flo, &args(&["make:admin-resource", "Post"])));
         assert!(allowed(Program::Flo, &args(&["migrate", "--force"])));
+        assert!(allowed(Program::Flo, &args(&["db:check"])));
         assert!(!allowed(Program::Flo, &args(&["user:password", "admin"])));
         assert!(!allowed(Program::Flo, &args(&["tinker"])));
         assert!(!allowed(Program::Flo, &args(&[])));

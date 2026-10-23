@@ -19,7 +19,7 @@ export type Tab = 'overview' | 'database' | 'logs' | 'packages' | 'doctor';
 // In the mockups' order; Generate joins in stage 5
 export const TABS: readonly Tab[] = ['overview', 'database', 'logs', 'packages', 'doctor'];
 
-export type View = { name: 'welcome' } | { name: 'settings' } | { name: 'project'; path: string; tab: Tab };
+export type View = { name: 'welcome' } | { name: 'settings' } | { name: 'wizard' } | { name: 'project'; path: string; tab: Tab };
 
 export interface State {
   ready: boolean;

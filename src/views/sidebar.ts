@@ -4,6 +4,7 @@ import { h, ltr, plain } from '../ui/dom.ts';
 import { errorText } from '../ui/errors.ts';
 import { icon } from '../ui/icons.ts';
 import { refreshProjects, showProject, showSettings, state, toast } from '../state.ts';
+import { openWizard } from './wizard.ts';
 
 export function sidebar(): HTMLElement {
   const view = state.view;
@@ -42,7 +43,7 @@ export function sidebar(): HTMLElement {
       projects,
       h(
         'button',
-        { type: 'button', class: 'btn', style: 'margin-top:8px', disabled: true, title: t('sidebar.newProject') },
+        { type: 'button', class: 'btn', style: 'margin-top:8px', onclick: openWizard },
         icon('plus'),
         t('sidebar.newProject'),
       ),

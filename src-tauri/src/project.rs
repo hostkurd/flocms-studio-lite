@@ -149,7 +149,8 @@ pub fn info(dir: &Path) -> Result<ProjectInfo> {
     })
 }
 
-/// .env as FloCMS reads it: KEY=VALUE lines, # comments, optional quotes.
+/// .env as FloCMS core reads it (Env::load): KEY=VALUE lines, # comment
+/// lines, surrounding quotes removed. There are no inline comments.
 pub fn read_env(file: &Path) -> BTreeMap<String, String> {
     parse_env(&fs::read_to_string(file).unwrap_or_default())
 }
@@ -161,20 +162,19 @@ pub fn parse_env(text: &str) -> BTreeMap<String, String> {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let line = line.strip_prefix("export ").unwrap_or(line);
         let Some((key, value)) = line.split_once('=') else { continue };
         let key = key.trim();
         if key.is_empty() || !key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
             continue;
         }
         let value = value.trim();
+        // As core's Env::load: surrounding quotes removed, nothing else
         let value = if value.len() >= 2
             && ((value.starts_with('"') && value.ends_with('"')) || (value.starts_with('\'') && value.ends_with('\'')))
         {
             value[1..value.len() - 1].to_string()
         } else {
-            // An unquoted value ends at " #" (an inline comment)
-            value.split(" #").next().unwrap_or("").trim().to_string()
+            value.to_string()
         };
         values.insert(key.to_string(), value);
     }
@@ -341,13 +341,13 @@ pub mod tests {
     #[test]
     fn parses_env() {
         let env = parse_env(
-            "# comment\nAPP_NAME=\"My Site\"\nAPP_KEY=\nLANGUAGES=en,ar,ku # inline\nDB_PASSWORD='p#ss'\nexport X=1\nbad line\n",
+            "# comment\nAPP_NAME=\"My Site\"\nAPP_KEY=\nLANGUAGES=en,ar,ku\nDB_PASSWORD='p#ss'\nX=a #b\nbad line\n",
         );
         assert_eq!(env.get("APP_NAME").map(String::as_str), Some("My Site"));
         assert_eq!(env.get("APP_KEY").map(String::as_str), Some(""));
         assert_eq!(env.get("LANGUAGES").map(String::as_str), Some("en,ar,ku"));
         assert_eq!(env.get("DB_PASSWORD").map(String::as_str), Some("p#ss"));
-        assert_eq!(env.get("X").map(String::as_str), Some("1"));
+        assert_eq!(env.get("X").map(String::as_str), Some("a #b"));
         assert!(!env.contains_key("bad line"));
     }
 

@@ -1,4 +1,5 @@
 mod commands;
+mod envfile;
 mod error;
 mod events;
 mod project;
@@ -59,6 +60,9 @@ pub fn run() {
             commands::flo_capture,
             commands::task_start,
             commands::task_cancel,
+            commands::folder_status,
+            commands::env_set,
+            commands::home_folder,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting FloCMS Studio")

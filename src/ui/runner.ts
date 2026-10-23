@@ -39,7 +39,8 @@ export class Terminal {
 
   add(text: string, cls = ''): void {
     const atBottom = this.el.scrollHeight - this.el.scrollTop - this.el.clientHeight < 24;
-    this.el.append(h('div', { class: cls }, text));
+    // dir=auto: a translated line (Studio's own) reads in its own direction
+    this.el.append(h('div', { class: cls, dir: 'auto' }, text));
     if (atBottom) this.el.scrollTop = this.el.scrollHeight;
   }
 }

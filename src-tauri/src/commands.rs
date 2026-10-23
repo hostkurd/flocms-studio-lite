@@ -165,3 +165,39 @@ pub fn task_start(
 pub fn task_cancel(state: State<'_, AppState>, id: String) {
     state.tasks.cancel(&id)
 }
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FolderStatus {
+    pub exists: bool,
+    /// Exists and has nothing in it
+    pub empty: bool,
+    pub parent_exists: bool,
+}
+
+/// Where the wizard would create a project: is the folder free?
+#[tauri::command]
+pub fn folder_status(path: String) -> FolderStatus {
+    let dir = Path::new(&path);
+    let exists = dir.exists();
+    let empty = dir.read_dir().map(|mut entries| entries.next().is_none()).unwrap_or(false);
+    let parent_exists = dir.parent().is_some_and(Path::is_dir);
+    FolderStatus { exists, empty, parent_exists }
+}
+
+/// Sets the wizard's values in a new project's .env (envfile::KEYS only).
+#[tauri::command]
+pub fn env_set(path: String, values: Vec<(String, String)>) -> Result<()> {
+    let dir = PathBuf::from(&path);
+    if !project::is_project(&dir) {
+        return Err(StudioError::new("not_flocms", path));
+    }
+    crate::envfile::write(&dir, &values)
+}
+
+/// The user's home folder, where the wizard suggests a Sites folder.
+#[tauri::command]
+pub fn home_folder(app: tauri::AppHandle) -> Option<String> {
+    use tauri::Manager;
+    app.path().home_dir().ok().map(|p| p.to_string_lossy().into_owned())
+}
