@@ -65,6 +65,20 @@ export function formatNumber(value: number): string {
   }
 }
 
+/** "14 minutes ago" (Kurdish from the dictionary: not every system has it). */
+export function relativeTime(at: number, now = Date.now()): string {
+  const minutes = Math.max(0, Math.round((now - at) / 60000));
+  const [count, unit, key]: [number, Intl.RelativeTimeFormatUnit, Key] =
+    minutes < 60 ? [minutes, 'minute', 'time.minutes'] : minutes < 1440 ? [Math.round(minutes / 60), 'hour', 'time.hours'] : [Math.round(minutes / 1440), 'day', 'time.days'];
+  if (minutes < 1) return t('time.now');
+  if (current === 'ku') return t(key, { count });
+  try {
+    return new Intl.RelativeTimeFormat(current === 'ar' ? 'ar-u-nu-arab' : 'en', { numeric: 'auto' }).format(-count, unit);
+  } catch {
+    return t(key, { count });
+  }
+}
+
 export function hasKey(key: string): key is Key {
   return key in en;
 }

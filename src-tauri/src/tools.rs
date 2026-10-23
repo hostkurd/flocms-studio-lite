@@ -198,9 +198,20 @@ pub struct Tool {
 
 #[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
+pub struct DatabaseServer {
+    /// "MariaDB" or "MySQL", from the client program when it is installed
+    pub name: Option<String>,
+    pub version: Option<String>,
+    /// Something answers on 127.0.0.1:3306
+    pub running: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct Tools {
     pub php: Tool,
     pub composer: Tool,
+    pub database: DatabaseServer,
 }
 
 pub fn detect(settings: &Settings) -> Tools {
@@ -222,7 +233,43 @@ pub fn detect(settings: &Settings) -> Tools {
         }
         _ => Tool { error: Some("not_found".into()), ..Default::default() },
     };
-    Tools { php, composer }
+    Tools { php, composer, database: database_server() }
+}
+
+/// The MySQL/MariaDB server on this computer (D3: Studio uses an installed
+/// one). The version comes from the client program when it is on PATH;
+/// "running" from the default port.
+pub fn database_server() -> DatabaseServer {
+    use std::net::{SocketAddr, TcpStream};
+    let address: SocketAddr = ([127, 0, 0, 1], 3306).into();
+    let running = TcpStream::connect_timeout(&address, Duration::from_millis(300)).is_ok();
+    for client in ["mariadb", "mysql"] {
+        if let Some(path) = resolve(client) {
+            let mut command = command(&path);
+            command.arg("--version").stdin(Stdio::null());
+            if let Ok(out) = run_capture(command, Duration::from_secs(5)) {
+                if let Some((name, version)) = database_version(&out.stdout) {
+                    return DatabaseServer { name: Some(name), version: Some(version), running };
+                }
+            }
+        }
+    }
+    DatabaseServer { name: None, version: None, running }
+}
+
+/// "mysql  Ver 15.1 Distrib 10.11.6-MariaDB, for debian" -> (MariaDB, 10.11.6)
+/// "mariadb from 11.4.3-MariaDB, client 15.2" -> (MariaDB, 11.4.3)
+/// "mysql  Ver 8.0.39 for Linux on x86_64" -> (MySQL, 8.0.39)
+pub fn database_version(output: &str) -> Option<(String, String)> {
+    let line = output.lines().next()?.trim();
+    if let Some(at) = line.find("-MariaDB") {
+        let version = line[..at].rsplit([' ', '\t']).next()?.to_string();
+        return Some(("MariaDB".into(), version));
+    }
+    let after = line.split("Ver ").nth(1)?;
+    let version = after.split_whitespace().next()?.trim_end_matches(',').to_string();
+    version.chars().next().filter(char::is_ascii_digit)?;
+    Some(("MySQL".into(), version))
 }
 
 fn tool_from(path: &Path, result: Result<Captured>, version: impl Fn(&str) -> Option<String>) -> Tool {
@@ -305,6 +352,23 @@ mod tests {
             Some("2.9.1")
         );
         assert_eq!(composer_version("nothing"), None);
+    }
+
+    #[test]
+    fn reads_database_versions() {
+        assert_eq!(
+            database_version("mysql  Ver 15.1 Distrib 10.11.6-MariaDB, for debian-linux-gnu (x86_64)"),
+            Some(("MariaDB".into(), "10.11.6".into()))
+        );
+        assert_eq!(
+            database_version("mariadb from 11.4.3-MariaDB, client 15.2 for Win64 (AMD64)"),
+            Some(("MariaDB".into(), "11.4.3".into()))
+        );
+        assert_eq!(
+            database_version("mysql  Ver 8.0.39 for Linux on x86_64 (MySQL Community Server - GPL)"),
+            Some(("MySQL".into(), "8.0.39".into()))
+        );
+        assert_eq!(database_version("command not found"), None);
     }
 
     #[test]

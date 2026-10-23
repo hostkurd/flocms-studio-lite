@@ -8,6 +8,7 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::error::{Result, StudioError};
 use crate::project::{self, ProjectInfo, ProjectSummary};
+use crate::server::{LogLine, ServerState};
 use crate::settings::Settings;
 use crate::tools::{self, Tools};
 use crate::AppState;
@@ -101,4 +102,34 @@ pub fn open_url(app: tauri::AppHandle, url: String) -> Result<()> {
         return Err(StudioError::new("open_failed", url));
     }
     app.opener().open_url(url, None::<&str>).map_err(|e| StudioError::new("open_failed", e.to_string()))
+}
+
+#[tauri::command]
+pub fn server_start(app: tauri::AppHandle, state: State<'_, AppState>, path: String) -> Result<ServerState> {
+    let settings = settings(&state);
+    state.servers.start(&app, &settings, &path)
+}
+
+/// Stops the server; the "server-state" event says when it has ended.
+#[tauri::command]
+pub async fn server_stop(state: State<'_, AppState>, path: String) -> Result<()> {
+    let servers = state.servers.clone();
+    tauri::async_runtime::spawn_blocking(move || servers.stop(&path))
+        .await
+        .map_err(|e| StudioError::new("io", e.to_string()))
+}
+
+#[tauri::command]
+pub fn server_states(state: State<'_, AppState>) -> Vec<ServerState> {
+    state.servers.states()
+}
+
+#[tauri::command]
+pub fn server_logs(state: State<'_, AppState>, path: String) -> Vec<LogLine> {
+    state.servers.logs(&path)
+}
+
+#[tauri::command]
+pub fn server_clear_logs(state: State<'_, AppState>, path: String) {
+    state.servers.clear_logs(&path)
 }

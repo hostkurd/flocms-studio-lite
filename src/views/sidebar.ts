@@ -20,9 +20,13 @@ export function sidebar(): HTMLElement {
             title: p.path,
             onclick: () => showProject(p.path),
           },
-          h('span', { class: 'dot' + (p.missing ? ' is-missing' : '') }),
+          h('span', { class: 'dot' + (p.missing ? ' is-missing' : state.servers[p.path] ? ' is-running' : state.busy[p.path] ? ' is-busy' : '') }),
           h('span', { class: 'name', dir: 'auto' }, p.name),
-          p.missing ? h('span', { class: 'badge', style: 'color:var(--fa-danger)' }, t('sidebar.missing')) : null,
+          p.missing
+            ? h('span', { class: 'badge', style: 'color:var(--fa-danger)' }, t('sidebar.missing'))
+            : state.servers[p.path]
+              ? h('span', { class: 'badge' }, t('server.running'))
+              : null,
         ),
       )
     : [h('div', { class: 'nav-empty' }, t('sidebar.noProjects'))];
@@ -49,6 +53,7 @@ export function sidebar(): HTMLElement {
       { class: 'computer' },
       h('div', { class: 'label' }, t('sidebar.computer')),
       toolRow('PHP', state.tools?.php),
+      databaseRow(),
       toolRow('Composer', state.tools?.composer),
       h(
         'button',
@@ -68,6 +73,24 @@ function toolRow(name: string, tool: Tool | undefined): HTMLElement {
     value = h('span', { class: 'mono ok' }, ltr(tool.version + ' ✓'));
   } else {
     value = h('span', { class: 'small bad' }, t(tool.error === 'failed' ? 'tool.failed' : 'tool.notFound'));
+  }
+  return h('div', { class: 'row' }, h('span', null, name), value);
+}
+
+/** MariaDB 11.4 · running, or what is known (D3: an installed server). */
+function databaseRow(): HTMLElement {
+  const db = state.tools?.database;
+  const name = db?.name ?? t('tool.database');
+  let value: HTMLElement;
+  if (!db || state.toolsChecking) {
+    value = h('span', { class: 'muted small' }, t('tool.checking'));
+  } else {
+    value = h(
+      'span',
+      { class: 'small ' + (db.running ? 'ok' : 'muted') },
+      db.version ? [ltr(db.version, 'mono'), ' '] : null,
+      t(db.running ? 'tool.dbRunning' : 'tool.dbStopped'),
+    );
   }
   return h('div', { class: 'row' }, h('span', null, name), value);
 }
