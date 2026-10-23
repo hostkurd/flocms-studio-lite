@@ -45,12 +45,12 @@ pub fn run(settings: &Settings, project: &Path, args: &[String]) -> Result<Previ
     if !project.join("vendor").is_dir() {
         return Err(StudioError::new("no_vendor", project.to_string_lossy()));
     }
-    let temp =
-        std::env::temp_dir().join(format!("flocms-studio-preview-{}-{}", std::process::id(), crate::server::now_ms()));
+    let temp = std::env::temp_dir().join(format!("{PREFIX}{}-{}", std::process::id(), crate::server::now_ms()));
     let result = (|| {
+        make_private_dir(&temp)?;
         let mut size = 0;
         copy_tree(project, &temp, project, &mut size)?;
-        link_vendor(&project.join("vendor"), &temp.join("vendor"))?;
+        make_vendor(&project.join("vendor"), &temp.join("vendor"), &mut size)?;
         // storage/ is skipped; the CLI may write logs there
         fs::create_dir_all(temp.join("storage").join("logs"))?;
         let before = snapshot(&temp);
@@ -62,11 +62,35 @@ pub fn run(settings: &Settings, project: &Path, args: &[String]) -> Result<Previ
     result
 }
 
+const PREFIX: &str = "flocms-studio-preview-";
+
+/// The copy holds .env: only this user can read it.
+fn make_private_dir(dir: &Path) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        fs::DirBuilder::new().mode(0o700).create(dir)?;
+    }
+    #[cfg(not(unix))]
+    fs::create_dir(dir)?;
+    Ok(())
+}
+
 fn skipped(root: &Path, path: &Path) -> bool {
     let relative = path.strip_prefix(root).unwrap_or(path).to_string_lossy().replace('\\', "/");
     SKIP.iter().any(|s| relative == *s || relative.starts_with(&format!("{s}/")))
 }
 
+fn count(size: &mut u64, bytes: u64, root: &Path) -> Result<()> {
+    *size += bytes;
+    if *size > MAX_BYTES {
+        return Err(StudioError::new("preview_too_big", root.to_string_lossy()));
+    }
+    Ok(())
+}
+
+/// Copies the project's own files. Links to folders, and anything that is
+/// not a regular file (a pipe, a device), are left out.
 fn copy_tree(from: &Path, to: &Path, root: &Path, size: &mut u64) -> Result<()> {
     fs::create_dir_all(to)?;
     for entry in fs::read_dir(from)? {
@@ -81,50 +105,102 @@ fn copy_tree(from: &Path, to: &Path, root: &Path, size: &mut u64) -> Result<()> 
             copy_tree(&path, &target, root, size)?;
         } else if kind.is_file() || kind.is_symlink() {
             if let Ok(meta) = fs::metadata(&path) {
-                if meta.is_dir() {
-                    continue; // a link to a folder: generators do not need it
+                if meta.is_file() {
+                    count(size, meta.len(), root)?;
+                    fs::copy(&path, &target)?;
                 }
-                *size += meta.len();
-                if *size > MAX_BYTES {
-                    return Err(StudioError::new("preview_too_big", root.to_string_lossy()));
-                }
-                fs::copy(&path, &target)?;
             }
         }
     }
     Ok(())
 }
 
+/// The copy's vendor/ is a real folder: Composer's autoloader (vendor/autoload.php
+/// and vendor/composer/) is copied, so the project's own classes load from the
+/// copy (PHP resolves links in __DIR__); each package folder is linked.
+fn make_vendor(real: &Path, vendor: &Path, size: &mut u64) -> Result<()> {
+    fs::create_dir(vendor)?;
+    for entry in fs::read_dir(real)? {
+        let entry = entry?;
+        let path = entry.path();
+        let target = vendor.join(entry.file_name());
+        let Ok(meta) = fs::metadata(&path) else { continue };
+        if entry.file_name() == "composer" && meta.is_dir() {
+            copy_tree(&path, &target, &path, size)?;
+        } else if meta.is_dir() {
+            link_dir(&path, &target)?;
+        } else if meta.is_file() {
+            count(size, meta.len(), real)?;
+            fs::copy(&path, &target)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(unix)]
-fn link_vendor(vendor: &Path, link: &Path) -> Result<()> {
-    std::os::unix::fs::symlink(vendor, link)?;
+fn link_dir(target: &Path, link: &Path) -> Result<()> {
+    std::os::unix::fs::symlink(target, link)?;
     Ok(())
 }
 
 /// A junction: needs no administrator rights, unlike a symbolic link.
 #[cfg(windows)]
-fn link_vendor(vendor: &Path, link: &Path) -> Result<()> {
-    let mut command = crate::tools::command(Path::new("cmd"));
-    command.arg("/C").arg("mklink").arg("/J").arg(link).arg(vendor);
-    let out = crate::tools::run_capture(command, std::time::Duration::from_secs(20))?;
-    if out.code != Some(0) {
-        return Err(StudioError::new("io", format!("mklink /J: {} {}", out.stdout.trim(), out.stderr.trim())));
-    }
+fn link_dir(target: &Path, link: &Path) -> Result<()> {
+    junction::create(target, link)?;
     Ok(())
 }
 
-/// Removes the copy. The vendor link goes first, as a link, so nothing of the
-/// real vendor/ can ever be deleted.
-fn cleanup(temp: &Path) {
-    let link = temp.join("vendor");
-    if link.exists() || fs::symlink_metadata(&link).is_ok() {
-        #[cfg(unix)]
-        let _ = fs::remove_file(&link);
-        #[cfg(windows)]
-        let _ = fs::remove_dir(&link);
+fn is_link(path: &Path) -> bool {
+    // On Windows a junction is reported as a link too
+    fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink())
+}
+
+fn unlink(path: &Path) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        fs::remove_dir(path) // removes the junction, not what it points to
     }
-    if fs::symlink_metadata(&link).is_err() {
-        let _ = fs::remove_dir_all(temp);
+    #[cfg(not(windows))]
+    {
+        fs::remove_file(path)
+    }
+}
+
+/// Removes a copy. The links in vendor/ go first, as links, so nothing of
+/// the real vendor/ can be deleted; if one cannot be removed, the copy stays.
+fn cleanup(temp: &Path) {
+    let vendor = temp.join("vendor");
+    let links: Vec<PathBuf> = if is_link(&vendor) {
+        vec![vendor.clone()]
+    } else {
+        fs::read_dir(&vendor)
+            .map(|e| e.flatten().map(|e| e.path()).filter(|p| is_link(p)).collect())
+            .unwrap_or_default()
+    };
+    for link in &links {
+        let _ = unlink(link);
+    }
+    if links.iter().any(|l| fs::symlink_metadata(l).is_ok()) {
+        return;
+    }
+    let _ = fs::remove_dir_all(temp);
+}
+
+/// Copies left by a Studio that was closed during a preview. Only ones older
+/// than ten minutes (a preview stops after two), so another Studio's running
+/// preview is left alone.
+pub fn clean_leftovers() {
+    let Ok(entries) = fs::read_dir(std::env::temp_dir()) else { return };
+    for entry in entries.flatten() {
+        let old = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.elapsed().ok())
+            .is_some_and(|age| age.as_secs() > 600);
+        if old && entry.file_name().to_string_lossy().starts_with(PREFIX) && !is_link(&entry.path()) {
+            cleanup(&entry.path());
+        }
     }
 }
 
@@ -240,17 +316,57 @@ mod tests {
         assert_eq!(changes[1].content.as_deref(), Some("<?php"));
     }
 
-    #[cfg(unix)]
     #[test]
     fn cleanup_never_touches_the_real_vendor() {
         let real = tempfile::tempdir().unwrap();
-        fs::create_dir_all(real.path().join("vendor/hostkurd")).unwrap();
+        fs::create_dir_all(real.path().join("vendor/hostkurd/flocms-core")).unwrap();
+        fs::write(real.path().join("vendor/hostkurd/flocms-core/Core.php"), "<?php").unwrap();
+        fs::create_dir_all(real.path().join("vendor/composer")).unwrap();
+        fs::write(real.path().join("vendor/composer/autoload_psr4.php"), "<?php").unwrap();
         fs::write(real.path().join("vendor/autoload.php"), "<?php").unwrap();
         let temp = tempfile::tempdir().unwrap().keep();
-        link_vendor(&real.path().join("vendor"), &temp.join("vendor")).unwrap();
+        let mut size = 0;
+        make_vendor(&real.path().join("vendor"), &temp.join("vendor"), &mut size).unwrap();
+        // The autoloader is a copy, the packages a link
+        assert!(!is_link(&temp.join("vendor/composer")));
+        assert!(is_link(&temp.join("vendor/hostkurd")));
+        assert!(temp.join("vendor/hostkurd/flocms-core/Core.php").is_file());
         cleanup(&temp);
         assert!(!temp.exists());
-        assert!(real.path().join("vendor/autoload.php").is_file());
+        assert!(real.path().join("vendor/hostkurd/flocms-core/Core.php").is_file());
+        assert!(real.path().join("vendor/composer/autoload_psr4.php").is_file());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn leaves_out_pipes_and_links_to_devices() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("a.php"), "a").unwrap();
+        std::os::unix::fs::symlink("/dev/zero", dir.path().join("zero")).unwrap();
+        let out = tempfile::tempdir().unwrap();
+        let mut size = 0;
+        copy_tree(dir.path(), &out.path().join("copy"), dir.path(), &mut size).unwrap();
+        assert!(out.path().join("copy/a.php").is_file());
+        assert!(!out.path().join("copy/zero").exists());
+    }
+
+    /// The project's own classes load from the copy, not from the project
+    /// (PHP resolves links in __DIR__, so vendor/composer must be a copy).
+    #[test]
+    fn the_copy_loads_its_own_classes() {
+        let Ok(project) = std::env::var("FLOCMS_STUDIO_TEST_PROJECT") else { return };
+        let project = PathBuf::from(project);
+        let temp = tempfile::tempdir().unwrap().keep();
+        let mut size = 0;
+        copy_tree(&project, &temp, &project, &mut size).unwrap();
+        make_vendor(&project.join("vendor"), &temp.join("vendor"), &mut size).unwrap();
+        let code = "require 'vendor/autoload.php'; echo (new ReflectionClass('FloCMS\\Controllers\\PagesController'))->getFileName();";
+        let mut php = std::process::Command::new("php");
+        php.arg("-r").arg(code).current_dir(&temp);
+        let out = php.output().unwrap();
+        let file = String::from_utf8_lossy(&out.stdout).to_string();
+        cleanup(&temp);
+        assert!(file.starts_with(&*temp.to_string_lossy()), "{file} {}", String::from_utf8_lossy(&out.stderr));
     }
 
     /// The real thing: FLOCMS_STUDIO_TEST_PROJECT = a FloCMS 2.0 project with
@@ -268,6 +384,10 @@ mod tests {
         assert!(paths.contains(&"models/StudioPreviewProbeModel.php"), "{paths:?}");
         // Nothing in the real project
         assert!(!project.join("controllers/StudioPreviewProbeController.php").exists());
+        assert!(fs::read_dir(std::env::temp_dir())
+            .unwrap()
+            .flatten()
+            .all(|e| !e.file_name().to_string_lossy().starts_with(&format!("{PREFIX}{}-", std::process::id()))));
         assert!(project.join("vendor/autoload.php").is_file());
     }
 }

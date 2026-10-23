@@ -23,6 +23,10 @@ interface Draft {
   previewing: boolean;
   /** The file shown under the list */
   open: string | null;
+  /** Counts previews: a result for an older one is dropped */
+  run: number;
+  /** Draws the tab on screen now (it is rebuilt when the project's details change) */
+  redraw: (() => void) | null;
 }
 
 // Per project, kept while Studio runs: the tab is redrawn when the project's
@@ -40,6 +44,8 @@ function draftFor(path: string): Draft {
       previewError: null,
       previewing: false,
       open: null,
+      run: 0,
+      redraw: null,
     };
     drafts.set(path, draft);
   }
@@ -55,6 +61,8 @@ export function openGenerator(path: string, id: GeneratorId): void {
 }
 
 function resetPreview(draft: Draft): void {
+  draft.run++;
+  draft.previewing = false;
   draft.preview = null;
   draft.previewOf = null;
   draft.previewError = null;
@@ -80,6 +88,7 @@ export function generateTab(info: ProjectInfo): HTMLElement {
               type: 'button',
               class: 'btn' + (g.id === draft.id ? ' is-selected' : ''),
               'aria-pressed': g.id === draft.id ? 'true' : 'false',
+              disabled: draft.previewing && g.id !== draft.id,
               onclick: () => {
                 if (g.id === draft.id) return;
                 draft.id = g.id;
@@ -98,6 +107,7 @@ export function generateTab(info: ProjectInfo): HTMLElement {
     }
     root.append(h('div', { class: 'gen-grid' }, formCard(info, gen, draft, draw), previewCard(draft)));
   };
+  draft.redraw = draw;
   draw();
   return root;
 }
@@ -112,11 +122,15 @@ function formCard(info: ProjectInfo, gen: Generator, draft: Draft, draw: () => v
 
   const update = () => {
     const words = args(gen, values);
-    command.textContent = shownCommand(words);
+    const line = shownCommand(words);
+    // A word breaks only between words, never after the dashes of --table
+    clear(command);
+    line.split(' ').forEach((word, i) => command.append(i ? ' ' : '', h('span', { class: 'word' }, word)));
+    command.dataset.command = line;
     const can = ready(values) && !blocked && !draft.previewing;
     previewButton.disabled = !can;
     createButton.disabled = !can;
-    stale.hidden = !draft.previewOf || draft.previewOf === command.textContent;
+    stale.hidden = !draft.previewOf || draft.previewOf === line;
   };
 
   const tables = (checksFor(info.path).db?.tables ?? []).map((x) => x.table);
@@ -191,20 +205,25 @@ function flagField(gen: Generator, field: Field, values: Values, update: () => v
 
 async function preview(info: ProjectInfo, gen: Generator, draft: Draft, draw: () => void): Promise<void> {
   const words = args(gen, draft.values[gen.id]);
+  const run = ++draft.run;
   draft.previewing = true;
   draft.previewError = null;
   draw();
+  let result: GeneratorPreview | null = null;
+  let failure: string | null = null;
   try {
-    draft.preview = await api.generatorPreview(info.path, words);
-    draft.previewOf = shownCommand(words);
-    draft.open = draft.preview.files.find((f) => f.change !== 'deleted')?.path ?? null;
+    result = await api.generatorPreview(info.path, words);
   } catch (error) {
-    draft.preview = null;
-    draft.previewOf = null;
-    draft.previewError = errorText(toError(error));
+    failure = errorText(toError(error));
   }
+  // Another generator was picked, or Create ran, in the meantime
+  if (run !== draft.run) return;
+  draft.preview = result;
+  draft.previewOf = result ? shownCommand(words) : null;
+  draft.previewError = failure;
+  draft.open = result?.files.find((f) => f.change !== 'deleted')?.path ?? null;
   draft.previewing = false;
-  draw();
+  (draft.redraw ?? draw)();
 }
 
 async function create(info: ProjectInfo, gen: Generator, draft: Draft, draw: () => void): Promise<void> {
@@ -217,7 +236,7 @@ async function create(info: ProjectInfo, gen: Generator, draft: Draft, draw: () 
   // A migration or resource changes what the Database tab and Doctor show
   await loadInfo(info.path);
   loadChecks(info, true);
-  draw();
+  (draft.redraw ?? draw)();
 }
 
 const MARK: Record<FileChange['change'], { sign: string; cls: string }> = {

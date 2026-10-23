@@ -120,7 +120,9 @@ export function args(gen: Generator, values: Values): string[] {
 
 /** The name is the one thing every generator needs. */
 export function ready(values: Values): boolean {
-  return String(values.name ?? '').trim() !== '';
+  const name = String(values.name ?? '').trim();
+  // "-x" would be read as an option
+  return name !== '' && !name.startsWith('-');
 }
 
 /** As a person would type it: php flo make:admin-page "Sales Report" */
@@ -161,7 +163,7 @@ export function diff(before: string, after: string, context = 2): DiffLine[] {
       lines.push({ kind: 'same', text: a[i]! });
       i++;
       j++;
-    } else if (j < m && (i >= n || longest[i]![j + 1]! >= longest[i + 1]![j]!)) {
+    } else if (j < m && (i >= n || longest[i]![j + 1]! > longest[i + 1]![j]!)) {
       lines.push({ kind: 'added', text: b[j]! });
       j++;
     } else {
@@ -173,8 +175,9 @@ export function diff(before: string, after: string, context = 2): DiffLine[] {
   const keep = lines.map((l, k) => l.kind !== 'same' || lines.slice(Math.max(0, k - context), k + context + 1).some((x) => x.kind !== 'same'));
   const shown: DiffLine[] = [];
   lines.forEach((line, k) => {
+    // "…" where lines are left out: at the start too
     if (keep[k]) shown.push(line);
-    else if (keep[k - 1]) shown.push({ kind: 'same', text: '…' });
+    else if (k === 0 || keep[k - 1]) shown.push({ kind: 'same', text: '…' });
   });
   return shown;
 }

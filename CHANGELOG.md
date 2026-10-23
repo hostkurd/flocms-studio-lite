@@ -4,7 +4,8 @@
 
 ### Stage 5: generators
 - A Generate tab (board 3), after Overview: forms for `make:admin-resource`, `make:admin-page`, `make:admin-block`, `make:admin-widget`, `make:controller` and `make:migration`, with the options the commands have (`php flo help <command>`); the command line updates as you type. The four admin generators need flocms-admin.
-- Preview (D5) runs the real command in a temporary copy of the project, with `vendor/` linked (a symbolic link on macOS, a junction on Windows) instead of copied, and lists what it would create, change or delete; a changed file (`config/admin.php` when a page or widget registers itself) shows as a diff. The copy is deleted afterwards, the link first. Nothing in the project changes.
+- Preview (D5) runs the real command in a temporary copy of the project and lists what it would create, change or delete; a changed file (`config/admin.php` when a page or widget registers itself) shows as a diff. Nothing in the project changes.
+- The copy's `vendor/` is a folder of its own: Composer's autoloader (`vendor/autoload.php`, `vendor/composer/`) is copied, so the project's classes load from the copy; each package folder is linked (a symbolic link on macOS, a junction on Windows, made without `cmd.exe`). The links are removed first, then the copy; copies left by a Studio closed during a preview are removed at the next start. The copy is readable only by the user (it holds `.env`).
 - Create runs the same command in the project, then the Overview, Database and Doctor read the project again.
 - The Overview's Quick commands open Generate on a generator: New admin resource, New admin page, New block, New migration (board 1).
 - A migration's file name gets the time of Create, so it differs from the preview's; the form says so.

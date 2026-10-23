@@ -18,6 +18,7 @@ test('a choice other than the default, and names with spaces', () => {
 test('the name is needed', () => {
   assert.equal(ready({ name: '  ' }), false);
   assert.equal(ready({ name: 'Blog' }), true);
+  assert.equal(ready({ name: '--force' }), false);
 });
 
 test('every generator is a make: command with a name', () => {
@@ -32,9 +33,16 @@ test('the diff of a registration in config/admin.php', () => {
   const after = ['<?php', 'return [', "    'pages' => [", '        SalesReport::class,', '    ],', '];'].join('\n');
   const lines = diff(before, after, 1);
   assert.deepEqual(lines, [
+    { kind: 'same', text: '…' },
     { kind: 'same', text: "    'pages' => [" },
     { kind: 'added', text: '        SalesReport::class,' },
     { kind: 'same', text: '    ],' },
     { kind: 'same', text: '…' },
   ]);
+});
+
+test('a changed line: the old one first, then the new one', () => {
+  const before = ['1', '2', '3', '4', '5', 'b', '7', '8', '9', '10'].join('\n');
+  const after = ['1', '2', '3', '4', '5', 'c', '7', '8', '9', '10'].join('\n');
+  assert.deepEqual(diff(before, after, 1).map((l) => (l.kind === 'added' ? '+' : l.kind === 'removed' ? '-' : '') + l.text), ['…', '5', '-b', '+c', '7', '…']);
 });
