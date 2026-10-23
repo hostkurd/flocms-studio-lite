@@ -12,8 +12,8 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::events::Events;
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Runtime};
 
 use crate::error::{Result, StudioError};
 use crate::project;
@@ -151,9 +151,9 @@ impl Tasks {
     /// end as "task-exit". `stdin` is written and closed (a password for
     /// user:create --password-stdin never appears on the command line).
     #[allow(clippy::too_many_arguments)]
-    pub fn start<R: Runtime>(
+    pub fn start<E: Events>(
         &self,
-        app: &AppHandle<R>,
+        app: &E,
         settings: &Settings,
         id: String,
         program: Program,
@@ -195,8 +195,7 @@ impl Tasks {
                         Ok(_) => {
                             let text = String::from_utf8_lossy(&buffer);
                             for piece in text.trim_end_matches(['\n', '\r']).split('\r') {
-                                let _ = app
-                                    .emit("task-output", TaskLine { id: id.clone(), stream, line: piece.to_string() });
+                                app.send("task-output", TaskLine { id: id.clone(), stream, line: piece.to_string() });
                             }
                         }
                     }
@@ -214,7 +213,7 @@ impl Tasks {
             if let Ok(mut running) = tasks.running.lock() {
                 running.remove(&id);
             }
-            let _ = app.emit("task-exit", TaskExit { id, code });
+            app.send("task-exit", TaskExit { id, code });
         });
         Ok(shown)
     }
