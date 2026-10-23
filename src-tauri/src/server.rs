@@ -12,8 +12,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::events::Events;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Runtime};
 
 use crate::error::{Result, StudioError};
 use crate::settings::Settings;
@@ -147,7 +147,7 @@ impl Servers {
         }
     }
 
-    pub fn start<R: Runtime>(&self, app: &AppHandle<R>, settings: &Settings, path: &str) -> Result<ServerState> {
+    pub fn start<E: Events>(&self, app: &E, settings: &Settings, path: &str) -> Result<ServerState> {
         let dir = PathBuf::from(path);
         if !crate::project::is_project(&dir) {
             return Err(StudioError::new("not_flocms", path));
@@ -197,7 +197,7 @@ impl Servers {
                 kill_tree(follower);
             }
             servers.save_record();
-            let _ = app2.emit(
+            app2.send(
                 "server-state",
                 ServerState { path: owned, running: false, url: None, started_at: None, exit_code: code },
             );
@@ -212,13 +212,13 @@ impl Servers {
             started_at: Some(started_at),
             exit_code: None,
         };
-        let _ = app.emit("server-state", state.clone());
+        app.send("server-state", state.clone());
         Ok(state)
     }
 
     /// `php flo log:tail app --follow`, while the server runs. The log may not
     /// exist yet (core writes it on the first error): then try again later.
-    fn start_follower<R: Runtime>(&self, app: &AppHandle<R>, settings: &Settings, path: &str) {
+    fn start_follower<E: Events>(&self, app: &E, settings: &Settings, path: &str) {
         let servers = self.clone();
         let app = app.clone();
         let settings = settings.clone();
@@ -269,9 +269,9 @@ impl Servers {
         self.inner.lock().map(|g| g.running.contains_key(path)).unwrap_or(false)
     }
 
-    fn read_lines<R: Runtime>(
+    fn read_lines<E: Events>(
         &self,
-        app: AppHandle<R>,
+        app: E,
         path: String,
         source: &'static str,
         stream: &'static str,
@@ -305,12 +305,12 @@ impl Servers {
                         lines.pop_front();
                     }
                 }
-                let _ = app.emit("server-log", entry);
+                app.send("server-log", entry);
             }
         });
     }
 
-    fn set_url<R: Runtime>(&self, app: &AppHandle<R>, path: &str, url: String) {
+    fn set_url<E: Events>(&self, app: &E, path: &str, url: String) {
         let state = match self.inner.lock() {
             Ok(mut g) => g.running.get_mut(path).map(|r| {
                 r.url = Some(url.clone());
@@ -325,7 +325,7 @@ impl Servers {
             Err(_) => None,
         };
         if let Some(state) = state {
-            let _ = app.emit("server-state", state);
+            app.send("server-state", state);
         }
     }
 
@@ -489,12 +489,12 @@ mod tests {
             eprintln!("skipped: FLOCMS_STUDIO_TEST_PROJECT is not set");
             return;
         };
-        let app = tauri::test::mock_app();
+        let app = crate::events::Recorder::default();
         let servers = Servers::default();
         let dir = tempfile::tempdir().unwrap();
         servers.init(dir.path());
         let settings = Settings { server_port: 18431, ..Settings::default() };
-        servers.start(app.handle(), &settings, &project).unwrap();
+        servers.start(&app, &settings, &project).unwrap();
 
         // The address comes from the "Serving … at" line
         let mut url = None;

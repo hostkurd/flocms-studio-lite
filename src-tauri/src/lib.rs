@@ -1,5 +1,6 @@
 mod commands;
 mod error;
+mod events;
 mod project;
 mod server;
 mod settings;

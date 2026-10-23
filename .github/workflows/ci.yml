@@ -40,7 +40,14 @@ jobs:
         run: npx vite build
       - name: Rust tests
         working-directory: src-tauri
-        run: cargo test
+        shell: bash
+        # Failed tests also become annotations (job logs are not always at hand)
+        run: |
+          set -o pipefail
+          cargo test 2>&1 | tee ../rust-tests.log || {
+            grep -E "^test .* FAILED|panicked at|error(\[E[0-9]+\])?:|STATUS_|exit code" ../rust-tests.log | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          }
       - name: Rust formatting
         working-directory: src-tauri
         run: cargo fmt --check
