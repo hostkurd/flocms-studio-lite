@@ -242,3 +242,28 @@ details.more>summary{cursor:pointer;min-height:34px;display:flex;align-items:cen
 @media (prefers-reduced-motion:reduce){.spinner{animation:none}}
 .hint:empty{display:none}
 .terminal [dir="auto"]{text-align:start}
+/* Generate (board 3) */
+.gen-picker{display:flex;flex-wrap:wrap;gap:8px}
+.btn.is-selected{background:var(--fa-primary-soft);border-color:var(--fa-primary);color:var(--fa-primary-text);font-weight:600}
+.gen-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px;align-items:start}
+.gen-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.gen-flags{display:flex;flex-direction:column;gap:6px}
+label.check{display:flex;gap:10px;align-items:center;min-height:32px;font-size:14px;cursor:pointer}
+label.check input{flex:none;margin:0}
+.command-line{background:#0f1b24;color:#c9d6df;border-radius:var(--fa-radius);padding:10px 12px;font-family:var(--fa-mono);font-size:13px;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere}
+.actions.end{justify-content:flex-end}
+.gen-files{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;text-align:left}
+.gen-file{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:0 8px;border:1px solid transparent;border-radius:8px;background:none;color:var(--fa-text);font-size:13px;cursor:pointer;text-align:left}
+.gen-file:hover:not(:disabled){background:var(--fa-surface-2)}
+.gen-file.is-selected{background:var(--fa-primary-soft);border-color:var(--fa-primary-border)}
+.gen-file:disabled{cursor:default}
+.gen-file .mono{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.gen-sign{font-family:var(--fa-mono);font-weight:700;width:12px;flex:none}
+.gen-sign.is-ok{color:var(--fa-success)}.gen-sign.is-warn{color:var(--fa-warning)}.gen-sign.is-bad{color:var(--fa-danger)}
+.gen-change{margin-left:auto;font-size:12px;flex:none}
+.code-view,.terminal,.command-line{font-variant-ligatures:none}
+.code-view{margin:0;background:#0f1b24;color:#c9d6df;border-radius:var(--fa-radius);padding:12px 14px;font-family:var(--fa-mono);font-size:12.5px;line-height:1.55;text-align:left;overflow:auto;max-height:420px;white-space:pre}
+.code-view .diff-added{color:#8bd9ae;background:rgba(76,195,138,.12);display:block}
+.code-view .diff-removed{color:#ff9a9a;background:rgba(255,120,120,.10);display:block}
+.code-view .diff-same{display:block}
+.gen-output{max-height:140px;font-size:12px}

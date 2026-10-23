@@ -201,3 +201,20 @@ pub fn home_folder(app: tauri::AppHandle) -> Option<String> {
     use tauri::Manager;
     app.path().home_dir().ok().map(|p| p.to_string_lossy().into_owned())
 }
+
+/// Runs a generator in a temporary copy of the project and returns what it
+/// would create or change (D5). Nothing in the project changes.
+#[tauri::command]
+pub async fn generator_preview(
+    state: State<'_, AppState>,
+    path: String,
+    args: Vec<String>,
+) -> Result<crate::preview::Preview> {
+    let settings = settings(&state);
+    tauri::async_runtime::spawn_blocking(move || {
+        let project = PathBuf::from(&path);
+        crate::preview::run(&settings, &project, &args).map(|p| crate::preview::with_before(&project, p))
+    })
+    .await
+    .map_err(|e| StudioError::new("io", e.to_string()))?
+}

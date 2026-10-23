@@ -2,6 +2,7 @@ mod commands;
 mod envfile;
 mod error;
 mod events;
+mod preview;
 mod project;
 mod server;
 mod settings;
@@ -63,6 +64,7 @@ pub fn run() {
             commands::folder_status,
             commands::env_set,
             commands::home_folder,
+            commands::generator_preview,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting FloCMS Studio")

@@ -112,6 +112,21 @@ export interface ProjectInfo extends ProjectSummary {
   hasLock: boolean;
 }
 
+export interface FileChange {
+  path: string;
+  change: 'created' | 'changed' | 'deleted';
+  /** null for a binary file */
+  content: string | null;
+  /** The project's version of a changed file */
+  before: string | null;
+}
+
+/** A generator run in a temporary copy of the project (D5). */
+export interface GeneratorPreview {
+  output: CommandOutput;
+  files: FileChange[];
+}
+
 /** What a failed command returns: a code to translate and the original text. */
 export interface StudioError {
   code: string;
@@ -178,6 +193,7 @@ export const api = {
   taskStart: (task: { id: string; program: 'flo' | 'composer'; cwd: string; args: string[]; stdin?: string; env?: [string, string][] }) =>
     call<string>('task_start', task),
   taskCancel: (id: string) => call<void>('task_cancel', { id }),
+  generatorPreview: (path: string, args: string[]) => call<GeneratorPreview>('generator_preview', { path, args }),
   onTaskOutput: (handler: (line: TaskLine) => void) => events('task-output', (p) => handler(p as TaskLine)),
   onTaskExit: (handler: (exit: TaskExit) => void) => events('task-exit', (p) => handler(p as TaskExit)),
   folderStatus: (path: string) => call<{ exists: boolean; empty: boolean; parentExists: boolean }>('folder_status', { path }),

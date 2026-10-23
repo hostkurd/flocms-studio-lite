@@ -8,12 +8,14 @@ import { icon } from '../ui/icons.ts';
 import { loadChecks } from '../checks.ts';
 import { databaseTab } from './database.ts';
 import { doctorTab } from './doctor.ts';
+import { generateTab } from './generate.ts';
 import { logsTab } from './logs.ts';
 import { overviewTab } from './overview.ts';
 import { packagesTab } from './packages.ts';
 
 const TAB_LABELS: Record<Tab, Key> = {
   overview: 'tab.overview',
+  generate: 'tab.generate',
   database: 'tab.database',
   logs: 'tab.logs',
   packages: 'tab.packages',
@@ -48,7 +50,9 @@ export function projectView(path: string, tab: Tab): HTMLElement {
   if (isInfo(info)) loadChecks(info);
   const content = !isInfo(info)
     ? h('p', { class: 'muted' }, t('common.loading'))
-    : tab === 'packages'
+    : tab === 'generate'
+      ? generateTab(info)
+      : tab === 'packages'
       ? packagesTab(info)
       : tab === 'logs'
         ? logsTab(info)
