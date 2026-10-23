@@ -1,15 +1,17 @@
 import { api, type ProjectInfo, type ProjectSummary } from '../api.ts';
 import { LANGUAGE_NAMES, t, type Key } from '../i18n/index.ts';
-import { openTargets, projectType, typeKey, urlFor } from '../project-type.ts';
-import { TABS, isInfo, refreshProjects, showHome, showTab, state, toast, type Tab } from '../state.ts';
+import { openTargets, projectType, typeKey } from '../project-type.ts';
+import { TABS, isInfo, openPart, refreshProjects, showHome, showTab, startServer, state, stopServer, toast, type Tab } from '../state.ts';
 import { h, ltr, plain, rich } from '../ui/dom.ts';
 import { errorText } from '../ui/errors.ts';
 import { icon } from '../ui/icons.ts';
+import { logsTab } from './logs.ts';
 import { overviewTab } from './overview.ts';
 import { packagesTab } from './packages.ts';
 
 const TAB_LABELS: Record<Tab, Key> = {
   overview: 'tab.overview',
+  logs: 'tab.logs',
   packages: 'tab.packages',
 };
 
@@ -41,7 +43,9 @@ export function projectView(path: string, tab: Tab): HTMLElement {
     ? h('p', { class: 'muted' }, t('common.loading'))
     : tab === 'packages'
       ? packagesTab(info)
-      : overviewTab(info);
+      : tab === 'logs'
+        ? logsTab(info)
+        : overviewTab(info);
 
   return h(
     'div',
@@ -63,16 +67,14 @@ function head(name: string, path: string, project: ProjectSummary | ProjectInfo 
   const actions: HTMLElement[] = [];
   if (project && !project.missing) {
     const targets = openTargets(project);
-    const base = 'appUrl' in project ? project.appUrl : null;
     const lang = 'defaultLanguage' in project ? project.defaultLanguage : null;
-    if (base) {
-      if (targets.site) actions.push(openButton('globe', 'project.openSite', urlFor(base, 'site', lang)));
-      if (targets.admin) actions.push(openButton('panel', 'project.openAdmin', urlFor(base, 'admin', lang)));
-      if (targets.api) actions.push(openButton('braces', 'project.openApi', urlFor(base, 'api', lang)));
-    }
+    if (targets.site) actions.push(openButton(path, 'globe', 'project.openSite', 'site', lang));
+    if (targets.admin) actions.push(openButton(path, 'panel', 'project.openAdmin', 'admin', lang));
+    if (targets.api) actions.push(openButton(path, 'braces', 'project.openApi', 'api', lang));
     actions.push(
       h('button', { type: 'button', class: 'btn', onclick: () => run(api.openInEditor(path)) }, icon('code'), t('project.openEditor')),
       h('button', { type: 'button', class: 'btn', onclick: () => run(api.openFolder(path)) }, icon('folder'), t('project.openFolder')),
+      serverButton(path),
     );
   }
   return h(
@@ -83,8 +85,21 @@ function head(name: string, path: string, project: ProjectSummary | ProjectInfo 
   );
 }
 
-function openButton(iconName: 'globe' | 'panel' | 'braces', label: Key, url: string): HTMLElement {
-  return h('button', { type: 'button', class: 'btn', title: url, onclick: () => run(api.openUrl(url)) }, icon(iconName), t(label));
+function openButton(path: string, iconName: 'globe' | 'panel' | 'braces', label: Key, part: 'site' | 'admin' | 'api', lang: string | null): HTMLElement {
+  return h('button', { type: 'button', class: 'btn', onclick: () => run(openPart(path, part, lang)) }, icon(iconName), t(label));
+}
+
+/** Start server / Stop server, or what it is doing. */
+export function serverButton(path: string, small = false): HTMLElement {
+  const busy = state.busy[path];
+  const size = small ? ' btn-sm' : '';
+  if (busy) {
+    return h('button', { type: 'button', class: 'btn' + size, disabled: true }, t(busy === 'starting' ? 'server.starting' : 'server.stopping'));
+  }
+  if (state.servers[path]) {
+    return h('button', { type: 'button', class: 'btn btn-danger' + size, onclick: () => run(stopServer(path)) }, icon('stop', 14), t('server.stop'));
+  }
+  return h('button', { type: 'button', class: 'btn btn-primary' + size, onclick: () => run(startServer(path).then(() => undefined)) }, icon('play', 14), t('server.start'));
 }
 
 function warnings(info: ProjectInfo): HTMLElement | null {
@@ -95,7 +110,7 @@ function warnings(info: ProjectInfo): HTMLElement | null {
   return h('div', { class: 'notice is-warn' }, icon('warn', 18), h('div', { class: 'body' }, items.map((text) => h('span', null, rich(text)))));
 }
 
-async function run(action: Promise<void>): Promise<void> {
+export async function run(action: Promise<void>): Promise<void> {
   try {
     await action;
   } catch (error) {

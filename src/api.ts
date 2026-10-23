@@ -2,6 +2,7 @@
 // (npm run dev without Tauri) a mock answers instead: see src/dev/mock.ts.
 
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 
 export interface Settings {
@@ -23,9 +24,33 @@ export interface Tool {
   error: 'not_found' | 'failed' | null;
 }
 
+export interface DatabaseServer {
+  name: string | null;
+  version: string | null;
+  running: boolean;
+}
+
 export interface Tools {
   php: Tool;
   composer: Tool;
+  database: DatabaseServer;
+}
+
+export interface ServerState {
+  path: string;
+  running: boolean;
+  url: string | null;
+  startedAt: number | null;
+  exitCode: number | null;
+}
+
+export interface LogLine {
+  path: string;
+  /** server = php flo serve, log = storage/logs/app.log */
+  source: 'server' | 'log';
+  stream: 'out' | 'err';
+  line: string;
+  at: number;
 }
 
 export type Home = 'site' | 'admin' | 'api';
@@ -74,17 +99,20 @@ export interface StudioError {
 }
 
 export type Backend = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+export type Events = (event: string, handler: (payload: unknown) => void) => Promise<() => void>;
 
 let backend: Backend = (command, args) => invoke(command, args);
+let events: Events = (event, handler) => listen(event, (e) => handler(e.payload));
 let folderPicker: () => Promise<string | null> = async () => {
   const picked = await open({ directory: true, multiple: false });
   return typeof picked === 'string' ? picked : null;
 };
 
 /** Replaces the Rust side (the browser mock, tests). */
-export function useBackend(next: Backend, picker?: () => Promise<string | null>): void {
+export function useBackend(next: Backend, picker?: () => Promise<string | null>, nextEvents?: Events): void {
   backend = next;
   if (picker) folderPicker = picker;
+  if (nextEvents) events = nextEvents;
 }
 
 export function isTauri(): boolean {
@@ -120,4 +148,11 @@ export const api = {
   openFolder: (path: string) => call<void>('open_folder', { path }),
   openUrl: (url: string) => call<void>('open_url', { url }),
   pickFolder: () => folderPicker(),
+  serverStart: (path: string) => call<ServerState>('server_start', { path }),
+  serverStop: (path: string) => call<void>('server_stop', { path }),
+  serverStates: () => call<ServerState[]>('server_states'),
+  serverLogs: (path: string) => call<LogLine[]>('server_logs', { path }),
+  serverClearLogs: (path: string) => call<void>('server_clear_logs', { path }),
+  onServerState: (handler: (state: ServerState) => void) => events('server-state', (p) => handler(p as ServerState)),
+  onServerLog: (handler: (line: LogLine) => void) => events('server-log', (p) => handler(p as LogLine)),
 };

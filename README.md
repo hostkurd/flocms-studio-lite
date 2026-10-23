@@ -9,7 +9,7 @@ Studio speaks English, Arabic and Kurdish (Sorani), right to left where the
 language is.
 
 > Status: v0.1 in progress. Built so far: the window, the project list,
-> project Overview and Packages, Settings.
+> project Overview and Packages, Settings, running the site and its logs.
 
 ## What you need
 
@@ -46,6 +46,13 @@ cd src-tauri
 cargo test
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
+```
+
+One Rust test runs a real `php flo serve`; it is skipped unless you point it
+at a FloCMS project with its packages installed:
+
+```
+FLOCMS_STUDIO_TEST_PROJECT=/path/to/a/flocms/site cargo test serves_a_real
 ```
 
 Build an installer for the system you are on:

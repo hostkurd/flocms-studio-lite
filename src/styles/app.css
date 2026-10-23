@@ -160,3 +160,12 @@ table.list tr:last-child td{border-bottom:0}
 .chips{display:inline-flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;border:1px solid var(--fa-border-strong);font-size:13px}
 .chip.is-default{border-color:var(--fa-primary-border);background:var(--fa-primary-soft);color:var(--fa-primary-text);font-weight:600}
+.status-line{display:flex;align-items:center;gap:8px}
+.dot-lg{width:10px;height:10px}
+.check-inline{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--fa-text-2);min-height:34px;cursor:pointer}
+.log-box{height:min(62vh,640px);min-height:260px;white-space:normal}
+.log-line{white-space:pre-wrap;overflow-wrap:anywhere}
+.log-trace>summary{cursor:pointer;list-style:none}
+.log-trace>summary::-webkit-details-marker{display:none}
+.log-trace>summary .log-line{display:inline}
+.terminal .tag{display:inline-block;padding:0 6px;margin-inline-end:6px;border-radius:4px;background:#1f3443;color:#9fc3d6;font-size:11px}

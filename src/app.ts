@@ -39,8 +39,10 @@ function keyFor(): string {
   const view = state.view;
   if (view.name !== 'project') return view.name;
   const info = state.info[view.path];
-  // A new object after each load, so a reload redraws
-  return `project:${view.path}:${view.tab}:${info ? infoVersion(info) : 'loading'}`;
+  const server = state.servers[view.path];
+  // A new object after each load, so a reload redraws; and the server's state
+  const run = `${server ? 'on' : 'off'}:${server?.url ?? ''}:${state.busy[view.path] ?? ''}`;
+  return `project:${view.path}:${view.tab}:${info ? infoVersion(info) : 'loading'}:${run}`;
 }
 
 const versions = new WeakMap<object, number>();

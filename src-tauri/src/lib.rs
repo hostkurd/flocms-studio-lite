@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod project;
+mod server;
 mod settings;
 mod tools;
 
@@ -13,6 +14,7 @@ use tauri::Manager;
 pub struct AppState {
     pub config_dir: PathBuf,
     pub settings: Mutex<settings::Settings>,
+    pub servers: server::Servers,
 }
 
 pub fn run() {
@@ -23,7 +25,10 @@ pub fn run() {
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
             let settings = settings::Settings::load(&config_dir);
-            app.manage(AppState { config_dir, settings: Mutex::new(settings) });
+            let servers = server::Servers::default();
+            // Stops servers a crash left running (D6)
+            servers.init(&config_dir);
+            app.manage(AppState { config_dir, settings: Mutex::new(settings), servers });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -38,7 +43,18 @@ pub fn run() {
             commands::open_in_editor,
             commands::open_folder,
             commands::open_url,
+            commands::server_start,
+            commands::server_stop,
+            commands::server_states,
+            commands::server_logs,
+            commands::server_clear_logs,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running FloCMS Studio");
+        .build(tauri::generate_context!())
+        .expect("error while starting FloCMS Studio")
+        .run(|app, event| {
+            // Studio owns the servers it started: they stop when it quits (D6)
+            if let tauri::RunEvent::Exit = event {
+                app.state::<AppState>().servers.stop_all();
+            }
+        });
 }

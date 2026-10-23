@@ -2,7 +2,7 @@
 // and for screenshots. Never part of a build (imported only in DEV).
 // URL options: ?lang=ar|ku|en  ?theme=dark|light  ?empty=1  ?view=settings
 
-import { useBackend, type ProjectInfo, type ProjectSummary, type Settings, type Tools } from '../api.ts';
+import { useBackend, type LogLine, type ProjectInfo, type ProjectSummary, type ServerState, type Settings, type Tools } from '../api.ts';
 
 const params = new URLSearchParams(location.search);
 
@@ -21,7 +21,56 @@ const settings: Settings = {
 const tools: Tools = {
   php: { found: true, path: 'C:\\php\\8.3\\php.exe', version: '8.3.12', error: null },
   composer: { found: true, path: 'C:\\ProgramData\\ComposerSetup\\bin\\composer.bat', version: '2.8.4', error: null },
+  database: { name: 'MariaDB', version: '11.4.3', running: true },
 };
+
+// ---- Servers: started on demand, with sample output ----------------------
+type Handler = (payload: unknown) => void;
+const handlers: Record<string, Handler[]> = {};
+const emit = (event: string, payload: unknown) => (handlers[event] ?? []).forEach((h) => h(payload));
+const servers: Record<string, ServerState> = {};
+const lines: Record<string, LogLine[]> = {};
+let nextPort = 8000;
+
+function log(path: string, line: string, source: LogLine['source'] = 'server', ago = 0): void {
+  const entry: LogLine = { path, source, stream: source === 'server' ? 'err' : 'out', line, at: Date.now() - ago };
+  (lines[path] ??= []).push(entry);
+  emit('server-log', entry);
+}
+
+function stamp(ago = 0): string {
+  const d = new Date(Date.now() - ago);
+  const day = d.toLocaleString('en-US', { weekday: 'short' });
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const time = d.toTimeString().slice(0, 8);
+  return `[${day} ${month} ${String(d.getDate()).padStart(2, ' ')} ${time} ${d.getFullYear()}]`;
+}
+
+function startServer(path: string): ServerState {
+  const port = nextPort++;
+  const url = `http://127.0.0.1:${port}`;
+  const startedAt = Date.now() - (params.has('running') ? 14 * 60000 : 0);
+  const state: ServerState = { path, running: true, url: null, startedAt, exitCode: null };
+  servers[path] = state;
+  setTimeout(() => {
+    state.url = url;
+    log(path, `[OK] Serving ${path} at ${url} (Ctrl+C to stop)`, 'server', 9000);
+    emit('server-state', { ...state });
+    const s = stamp();
+    log(path, `${s} PHP 8.3.12 Development Server (${url}) started`, 'server', 8800);
+    log(path, `${s} 127.0.0.1:51010 Accepted`);
+    log(path, `${s} 127.0.0.1:51011 [200]: GET /themes/default/css/style.css`);
+    log(path, `${s} 127.0.0.1:51010 Closing`);
+    log(path, `${s} FloCMS\\Core\\HttpException: HTTP 404 in ${path}\\vendor\\hostkurd\\flocms-core\\src\\App.php:393`);
+    log(path, `${s} Stack trace:`);
+    log(path, `${s} #0 ${path}\\public\\index.php(47): FloCMS\\Core\\App::run()`);
+    log(path, `${s} #1 {main}`);
+    log(path, `${s} PHP Warning:  Undefined array key "cover" in ${path}\\views\\listings\\show.html on line 14`);
+    log(path, `[2026-10-23 14:02:19] error: Undefined array key "cover" {"type":"ErrorException","line":14}`, 'log');
+    log(path, `${s} 127.0.0.1:51012 [404]: GET /favicon.ico - No such file or directory`);
+  }, 250);
+  return { ...state };
+}
 
 const core = { name: 'hostkurd/flocms-core', version: '2.8.0' };
 const cli = { name: 'hostkurd/flocms-cli', version: '2.0.1' };
@@ -107,6 +156,21 @@ async function handle(command: string, args: Record<string, unknown> = {}): Prom
     case 'add_project_folder':
       settings.projectFolders.push(String(args.path));
       return structuredClone(settings);
+    case 'server_start':
+      return servers[String(args.path)] ? { ...servers[String(args.path)]! } : startServer(String(args.path));
+    case 'server_stop': {
+      const path = String(args.path);
+      delete servers[path];
+      setTimeout(() => emit('server-state', { path, running: false, url: null, startedAt: null, exitCode: 0 }), 200);
+      return null;
+    }
+    case 'server_states':
+      return Object.values(servers).map((s) => ({ ...s }));
+    case 'server_logs':
+      return [...(lines[String(args.path)] ?? [])];
+    case 'server_clear_logs':
+      lines[String(args.path)] = [];
+      return null;
     case 'open_in_editor':
     case 'open_folder':
     case 'open_url':
@@ -118,6 +182,15 @@ async function handle(command: string, args: Record<string, unknown> = {}): Prom
 }
 
 export function installMock(): void {
-  useBackend(handle, async () => 'C:\\Users\\dev\\Sites');
+  useBackend(
+    handle,
+    async () => 'C:\\Users\\dev\\Sites',
+    async (event, handler) => {
+      (handlers[event] ??= []).push(handler);
+      return () => (handlers[event] = (handlers[event] ?? []).filter((h) => h !== handler));
+    },
+  );
+  // ?running=1: fectumhellas runs already, as after a reload
+  if (params.has('running') && projects[0]) startServer(projects[0].path);
   console.info('[mock] FloCMS Studio is using sample data (no Tauri).');
 }

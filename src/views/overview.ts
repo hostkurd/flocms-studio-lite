@@ -1,14 +1,62 @@
-import type { ProjectInfo } from '../api.ts';
-import { t } from '../i18n/index.ts';
-import { showTab } from '../state.ts';
+import { api, type ProjectInfo } from '../api.ts';
+import { relativeTime, t } from '../i18n/index.ts';
+import { localUrl, showTab, state } from '../state.ts';
 import { h, ltr, rich } from '../ui/dom.ts';
-import { languageChips, typeText } from './project.ts';
+import { icon } from '../ui/icons.ts';
+import { languageChips, run, serverButton, typeText } from './project.ts';
 
 /** The FloCMS packages shown first on the Overview, in this order. */
 const MAIN_PACKAGES = ['hostkurd/flocms-core', 'hostkurd/flocms-admin', 'hostkurd/flocms-api'];
 
 export function overviewTab(info: ProjectInfo): HTMLElement {
-  return h('div', { class: 'cards' }, projectCard(info), databaseCard(info), packagesCard(info));
+  return h('div', { class: 'cards' }, serverCard(info), databaseCard(info), packagesCard(info), projectCard(info));
+}
+
+function serverCard(info: ProjectInfo): HTMLElement {
+  const server = state.servers[info.path];
+  const busy = state.busy[info.path];
+  const url = server?.url ? localUrl(server.url) : null;
+  const label = server ? t('server.running') : t(busy === 'starting' ? 'server.starting' : 'server.stopped');
+  return h(
+    'section',
+    { class: 'card' },
+    h('div', { class: 'label' }, t('server.label')),
+    h('div', { class: 'big status-line' }, h('span', { class: 'dot dot-lg' + (server ? ' is-running' : busy ? ' is-busy' : '') }), label),
+    url
+      ? h('a', { href: url, class: 'mono', onclick: (e: Event) => { e.preventDefault(); void run(api.openUrl(url)); } }, ltr(url))
+      : null,
+    server?.startedAt ? h('div', { class: 'hint' }, t('server.started', { time: relativeTime(server.startedAt) })) : null,
+    server?.url?.includes('://0.0.0.0:') ? h('div', { class: 'hint is-warn' }, t('server.network')) : null,
+    !server && !busy ? h('div', { class: 'hint' }, t('server.notRunning')) : null,
+    appUrlNotice(info, url),
+    h('div', null, serverButton(info.path, true)),
+  );
+}
+
+/** When APP_URL is not the server's address, links the site makes go elsewhere. */
+function appUrlNotice(info: ProjectInfo, url: string | null): HTMLElement | null {
+  if (!url || !info.appUrl) return null;
+  if (origin(info.appUrl) === origin(url)) return null;
+  const env = info.path + (info.path.includes('\\') ? '\\' : '/') + '.env';
+  return h(
+    'div',
+    { class: 'notice is-warn', style: 'padding:10px 12px' },
+    icon('warn', 16),
+    h(
+      'div',
+      { class: 'body' },
+      h('span', { class: 'small' }, rich(t('server.appUrl', { appUrl: info.appUrl }))),
+      h('div', null, h('button', { type: 'button', class: 'btn btn-sm', onclick: () => run(api.openInEditor(env)) }, t('server.openEnv'))),
+    ),
+  );
+}
+
+function origin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
+  }
 }
 
 function projectCard(info: ProjectInfo): HTMLElement {
