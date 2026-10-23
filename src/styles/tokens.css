@@ -1,0 +1,72 @@
+/* Design tokens of flocms-admin (resources/assets/admin.css, admin 0.39.3),
+ * so Studio looks like the panel it manages. Only the selectors changed:
+ * the panel's .fa-panel becomes :root here. Studio adds two fonts: Bricolage
+ * Grotesque for headings and JetBrains Mono for commands and paths. */
+
+@font-face{font-family:"Instrument Sans";font-style:normal;font-weight:400 700;font-display:swap;src:url(/fonts/instrument-sans-latin-v1.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Instrument Sans";font-style:normal;font-weight:400 700;font-display:swap;src:url(/fonts/instrument-sans-latin-ext-v1.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Noto Sans Arabic";font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/noto-sans-arabic-v1.woff2) format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC}
+@font-face{font-family:"Bricolage Grotesque";font-style:normal;font-weight:200 800;font-display:swap;src:url(/fonts/bricolage-grotesque-latin-v1.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:100 800;font-display:swap;src:url(/fonts/jetbrains-mono-latin-v1.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+/* ---- Tokens: light (default) --------------------------------------------- */
+:root{
+  color-scheme:light;
+  --fa-bg:#f6f7f9;--fa-surface:#fff;--fa-surface-2:#f9fafb;--fa-surface-3:#f2f4f7;
+  --fa-text:#101828;--fa-text-2:#344054;--fa-muted:#667085;--fa-faint:#98a2b3;
+  --fa-border:#e4e7ec;--fa-border-strong:#d0d5dd;
+  --fa-primary:#0b6e91;--fa-primary-hover:#095a77;--fa-primary-text:#0b6e91;--fa-primary-soft:#e8f4f8;--fa-primary-border:#a9d6e5;--fa-on-primary:#fff;
+  --fa-success:#067647;--fa-success-solid:#067647;--fa-success-hover:#085d3a;--fa-success-soft:#ecfdf3;--fa-success-border:#abefc6;
+  --fa-warning:#b54708;--fa-warning-solid:#b54708;--fa-warning-hover:#93370d;--fa-warning-soft:#fffaeb;--fa-warning-border:#fedf89;
+  --fa-danger:#b42318;--fa-danger-solid:#b42318;--fa-danger-hover:#912018;--fa-danger-soft:#fef3f2;--fa-danger-border:#fecdca;
+  --fa-info:#175cd3;--fa-info-soft:#eff8ff;--fa-info-border:#b2ddff;
+  --fa-purple:#5925dc;--fa-purple-soft:#f4f3ff;
+  --fa-neutral:#344054;--fa-neutral-soft:#f2f4f7;--fa-row-selected:#f3f9fc;
+  --fa-sidebar:var(--fa-surface);--fa-sidebar-text:var(--fa-text-2);--fa-sidebar-muted:var(--fa-muted);--fa-sidebar-hover:var(--fa-surface-2);--fa-sidebar-hover-text:var(--fa-text);--fa-sidebar-active-bg:var(--fa-primary-soft);--fa-sidebar-active:var(--fa-primary-text);--fa-sidebar-border:var(--fa-border);--fa-sidebar-brand:var(--fa-text);
+  --fa-focus:#0b6e91;--fa-backdrop:rgba(16,24,40,.52);
+  --fa-chart:#0b6e91;--fa-chart-axis:#d0d5dd;--fa-chart-label:#667085;
+  --fa-radius-sm:6px;--fa-radius:8px;--fa-radius-lg:12px;--fa-radius-xl:14px;
+  --fa-shadow:0 1px 2px rgba(16,24,40,.05);
+  --fa-shadow-md:0 12px 32px rgba(16,24,40,.12);
+  --fa-shadow-lg:0 24px 64px rgba(16,24,40,.24);
+  --fa-font:"Instrument Sans","Noto Sans Arabic",system-ui,-apple-system,"Segoe UI",Roboto,Tahoma,Arial,sans-serif;
+  --fa-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --studio-display:"Bricolage Grotesque","Noto Sans Arabic",system-ui,sans-serif;
+}
+
+/* ---- Tokens: dark (theme "dark", or "auto" on a dark operating system) ----- */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --fa-bg:#0c111d;--fa-surface:#161b26;--fa-surface-2:#1b212d;--fa-surface-3:#222836;
+  --fa-text:#f5f5f6;--fa-text-2:#cecfd2;--fa-muted:#94969c;--fa-faint:#61646c;
+  --fa-border:#262c39;--fa-border-strong:#333a48;
+  --fa-primary:#0b6e91;--fa-primary-hover:#0d82ab;--fa-primary-text:#5fcbea;--fa-primary-soft:rgba(56,187,224,.14);--fa-primary-border:rgba(56,187,224,.4);
+  --fa-success:#47cd89;--fa-success-solid:#079455;--fa-success-hover:#067647;--fa-success-soft:rgba(71,205,137,.12);--fa-success-border:rgba(71,205,137,.35);
+  --fa-warning:#fdb022;--fa-warning-solid:#b54708;--fa-warning-hover:#93370d;--fa-warning-soft:rgba(253,176,34,.12);--fa-warning-border:rgba(253,176,34,.35);
+  --fa-danger:#f97066;--fa-danger-solid:#d92d20;--fa-danger-hover:#b42318;--fa-danger-soft:rgba(249,112,102,.12);--fa-danger-border:rgba(249,112,102,.35);
+  --fa-info:#84caff;--fa-info-soft:rgba(132,202,255,.12);--fa-info-border:rgba(132,202,255,.35);
+  --fa-purple:#bdb4fe;--fa-purple-soft:rgba(189,180,254,.12);
+  --fa-neutral:#cecfd2;--fa-neutral-soft:#222836;--fa-row-selected:rgba(56,187,224,.07);
+  --fa-focus:#5fcbea;--fa-backdrop:rgba(0,0,0,.6);
+  --fa-chart:#38bbe0;--fa-chart-axis:#333a48;--fa-chart-label:#94969c;
+  --fa-shadow:none;--fa-shadow-md:0 12px 32px rgba(0,0,0,.45);--fa-shadow-lg:0 24px 64px rgba(0,0,0,.6);
+}
+@media (prefers-color-scheme:dark){
+  :root[data-theme="auto"]{
+    color-scheme:dark;
+    --fa-bg:#0c111d;--fa-surface:#161b26;--fa-surface-2:#1b212d;--fa-surface-3:#222836;
+    --fa-text:#f5f5f6;--fa-text-2:#cecfd2;--fa-muted:#94969c;--fa-faint:#61646c;
+    --fa-border:#262c39;--fa-border-strong:#333a48;
+    --fa-primary:#0b6e91;--fa-primary-hover:#0d82ab;--fa-primary-text:#5fcbea;--fa-primary-soft:rgba(56,187,224,.14);--fa-primary-border:rgba(56,187,224,.4);
+    --fa-success:#47cd89;--fa-success-solid:#079455;--fa-success-hover:#067647;--fa-success-soft:rgba(71,205,137,.12);--fa-success-border:rgba(71,205,137,.35);
+    --fa-warning:#fdb022;--fa-warning-solid:#b54708;--fa-warning-hover:#93370d;--fa-warning-soft:rgba(253,176,34,.12);--fa-warning-border:rgba(253,176,34,.35);
+    --fa-danger:#f97066;--fa-danger-solid:#d92d20;--fa-danger-hover:#b42318;--fa-danger-soft:rgba(249,112,102,.12);--fa-danger-border:rgba(249,112,102,.35);
+    --fa-info:#84caff;--fa-info-soft:rgba(132,202,255,.12);--fa-info-border:rgba(132,202,255,.35);
+    --fa-purple:#bdb4fe;--fa-purple-soft:rgba(189,180,254,.12);
+    --fa-neutral:#cecfd2;--fa-neutral-soft:#222836;--fa-row-selected:rgba(56,187,224,.07);
+      --fa-focus:#5fcbea;--fa-backdrop:rgba(0,0,0,.6);
+    --fa-chart:#38bbe0;--fa-chart-axis:#333a48;--fa-chart-label:#94969c;
+    --fa-shadow:none;--fa-shadow-md:0 12px 32px rgba(0,0,0,.45);--fa-shadow-lg:0 24px 64px rgba(0,0,0,.6);
+  }
+}
+
